@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import CalendarSync, { CalendarSource } from "./CalendarSync";
 import FinancialCalculator, { FinancialData } from "./FinancialCalculator";
 import ExpenseTracker, { Expense } from "./ExpenseTracker";
+import BookingTracker, { Booking } from "./BookingTracker";
 import { Listing } from "./ListingsSidebar";
 
 /** Safely read a JSON value from localStorage, returning fallback on any error. */
@@ -47,12 +48,13 @@ const DEFAULT_FINANCIAL_DATA: FinancialData = {
 };
 
 const TABS = [
-  { id: "overview", label: "Overview", icon: "📊" },
-  { id: "financials", label: "Financials", icon: "💰" },
-  { id: "summary", label: "Summary", icon: "📈" },
-  { id: "expenses", label: "Expenses", icon: "🧾" },
-  { id: "calendar", label: "Calendar Sync", icon: "📅" },
-  { id: "settings", label: "Settings", icon: "⚙️" },
+  { id: "overview",  label: "Overview",      icon: "📊" },
+  { id: "financials",label: "Financials",    icon: "💰" },
+  { id: "bookings",  label: "Bookings",      icon: "📋" },
+  { id: "summary",   label: "Summary",       icon: "📈" },
+  { id: "expenses",  label: "Expenses",      icon: "🧾" },
+  { id: "calendar",  label: "Calendar Sync", icon: "📅" },
+  { id: "settings",  label: "Settings",      icon: "⚙️" },
 ];
 
 const LISTING_COLORS = [
@@ -73,12 +75,29 @@ export default function ListingDashboard({
 }: ListingDashboardProps) {
   const [activeTab, setActiveTab] = useState("overview");
 
+  // ── Overview month filter ──
+  const [overviewMonth, setOverviewMonth] = useState<string>(() => {
+    const t = new Date();
+    return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}`;
+  });
+  const [showMonthPicker, setShowMonthPicker] = useState(false);
+
+  // ── Summary monthly history ──
+  const [summaryExpandedMonths, setSummaryExpandedMonths] = useState<Set<string>>(() => {
+    const today = new Date();
+    const k = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+    return new Set([k]);
+  });
+
   // ── Per-listing persisted state ──
   const [financialData, setFinancialData] = useState<FinancialData>(() =>
     fromStorage(`bnb_fin_${listing.id}`, DEFAULT_FINANCIAL_DATA)
   );
   const [expenses, setExpenses] = useState<Expense[]>(() =>
     fromStorage(`bnb_exp_${listing.id}`, [])
+  );
+  const [bookings, setBookings] = useState<Booking[]>(() =>
+    fromStorage(`bnb_bkn_${listing.id}`, [])
   );
   const [calendarSources, setCalendarSources] = useState<CalendarSource[]>(() =>
     fromStorage(`bnb_cal_${listing.id}`, [])
@@ -92,6 +111,10 @@ export default function ListingDashboard({
   useEffect(() => {
     localStorage.setItem(`bnb_exp_${listing.id}`, JSON.stringify(expenses));
   }, [expenses, listing.id]);
+
+  useEffect(() => {
+    localStorage.setItem(`bnb_bkn_${listing.id}`, JSON.stringify(bookings));
+  }, [bookings, listing.id]);
 
   useEffect(() => {
     localStorage.setItem(`bnb_cal_${listing.id}`, JSON.stringify(calendarSources));
@@ -125,14 +148,48 @@ export default function ListingDashboard({
     setCalendarSources((prev) => prev.filter((s) => s.id !== id));
   };
 
-  const syncCalendarSource = (id: string) => {
+  const syncCalendarSource = (id: string, updates?: Partial<import("./CalendarSync").CalendarSource>) => {
     setCalendarSources((prev) =>
       prev.map((s) =>
         s.id === id
-          ? { ...s, status: "synced", lastSynced: "just now" }
+          ? { ...s, status: "synced", lastSynced: "just now", ...updates }
           : s
       )
     );
+  };
+
+  const importBookingsFromIcal = (imported: import("../api/ical-sync/route").ImportedBooking[]) => {
+    let added = 0, skipped = 0;
+    setBookings((prev) => {
+      // Existing UIDs come from bookings that were previously imported
+      // We store the iCal UID as the booking id for imported bookings
+      const existingIds = new Set(prev.map((b) => b.id));
+      const newBookings: Booking[] = [];
+      for (const imp of imported) {
+        if (existingIds.has(imp.uid)) {
+          skipped++;
+          continue;
+        }
+        newBookings.push({
+          id:            imp.uid,      // use UID so re-syncs are idempotent
+          guestName:     imp.guestName,
+          checkIn:       imp.checkIn,
+          checkOut:      imp.checkOut,
+          nights:        imp.nights,
+          source:        imp.source,
+          status:        imp.status,
+          paymentStatus: imp.paymentStatus,
+          chargeAmount:  imp.chargeAmount,
+          discountAmount:imp.discountAmount,
+          amountPaid:    imp.amountPaid,
+          notes:         imp.notes,
+          createdAt:     new Date().toISOString(),
+        });
+        added++;
+      }
+      return [...prev, ...newBookings];
+    });
+    return { added, skipped };
   };
 
   const addExpense = (expense: Omit<Expense, "id">) => {
@@ -141,6 +198,21 @@ export default function ListingDashboard({
 
   const deleteExpense = (id: string) => {
     setExpenses((prev) => prev.filter((e) => e.id !== id));
+  };
+
+  const addBooking = (booking: Omit<Booking, "id" | "createdAt">) => {
+    setBookings((prev) => [
+      ...prev,
+      { ...booking, id: Date.now().toString(), createdAt: new Date().toISOString() },
+    ]);
+  };
+
+  const updateBooking = (id: string, updates: Partial<Booking>) => {
+    setBookings((prev) => prev.map((b) => (b.id === id ? { ...b, ...updates } : b)));
+  };
+
+  const deleteBooking = (id: string) => {
+    setBookings((prev) => prev.filter((b) => b.id !== id));
   };
 
   const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
@@ -213,309 +285,518 @@ export default function ListingDashboard({
 
       {/* Tab Content */}
       <div className="tab-content">
-        {activeTab === "overview" && (
-          <div className="overview-grid">
-            <div className="overview-card highlight" style={{ borderColor: `${listing.color}44` }}>
-              <span className="ov-icon">🏠</span>
-              <div>
-                <div className="ov-title">Property</div>
-                <div className="ov-value">{listing.name}</div>
-                <div className="ov-sub">{listing.type} · {listing.address || "No address set"}</div>
-              </div>
-            </div>
-            <div className="overview-card">
-              <span className="ov-icon">💰</span>
-              <div>
-                <div className="ov-title">Total Setup Budget</div>
-                <div className="ov-value">{formatCurrency(totalSetupCost)}</div>
-                <div className="ov-sub">All finance inputs combined</div>
-              </div>
-            </div>
-            <div className="overview-card">
-              <span className="ov-icon">🛏️</span>
-              <div>
-                <div className="ov-title">Price Per Stay</div>
-                <div className="ov-value">{formatCurrency(financialData.chargePerStay)}</div>
-                <div className="ov-sub">
-                  {financialData.discountPercent > 0
-                    ? `Net after ${financialData.discountPercent}% fee: ${formatCurrency(effectiveRate)}`
-                    : "Per booking"}
-                </div>
-              </div>
-            </div>
-            <div className="overview-card">
-              <span className="ov-icon">📈</span>
-              <div>
-                <div className="ov-title">Projected Monthly Sales</div>
-                <div className="ov-value" style={{ color: "#81B29A" }}>
-                  {formatCurrency(projectedSales)}
-                </div>
-                <div className="ov-sub">{financialData.projectedStaysPerMonth} stays expected</div>
-              </div>
-            </div>
-            <div className="overview-card">
-              <span className="ov-icon">💸</span>
-              <div>
-                <div className="ov-title">Monthly Profit</div>
-                <div
-                  className="ov-value"
-                  style={{ color: monthlyProfit >= 0 ? "#81B29A" : "#E07A5F" }}
-                >
-                  {formatCurrency(monthlyProfit)}
-                </div>
-                <div className="ov-sub">
-                  Sales {formatCurrency(projectedSales)} − exp {formatCurrency(monthlyOperatingExpenses)}
-                </div>
-              </div>
-            </div>
-            <div className="overview-card">
-              <span className="ov-icon">📅</span>
-              <div>
-                <div className="ov-title">Days to Break Even</div>
-                <div className="ov-value" style={{ color: daysToBreakEven ? "#F2CC8F" : "#E07A5F" }}>
-                  {daysToBreakEven ? daysToBreakEven.toLocaleString() : "—"}
-                </div>
-                <div className="ov-sub">
-                  {daysToBreakEven
-                    ? `To recover ${formatCurrency(totalSetupCost)} invested`
-                    : "Set your financial numbers first"}
-                </div>
-              </div>
-            </div>
-            <div className="overview-card">
-              <span className="ov-icon">🧾</span>
-              <div>
-                <div className="ov-title">Total Logged Expenses</div>
-                <div className="ov-value" style={{ color: "#E07A5F" }}>{formatCurrency(totalExpenses)}</div>
-                <div className="ov-sub">{expenses.length} transactions</div>
-              </div>
-            </div>
-            <div className="overview-card">
-              <span className="ov-icon">🔗</span>
-              <div>
-                <div className="ov-title">Calendar Channels</div>
-                <div className="ov-value">{calendarSources.length}</div>
-                <div className="ov-sub">
-                  {calendarSources.filter((c) => c.status === "synced").length} synced
-                </div>
-              </div>
-            </div>
+        {activeTab === "overview" && (() => {
+          const now            = new Date();
+          const todayKey       = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+          const hour           = now.getHours();
+          const greeting       = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+          const isCurrentMonth = overviewMonth === todayKey;
 
-            <div className="overview-cta-row">
-              <button className="cta-card" onClick={() => setActiveTab("financials")}>
-                <span>💰</span>
-                <div>
-                  <div className="cta-title">Set Up Financials</div>
-                  <div className="cta-desc">Enter your setup costs and see your total budget instantly</div>
+          // Parse overviewMonth into a Date for navigation & labelling
+          const [ovYear, ovMon] = overviewMonth.split("-").map(Number);
+          const ovDate    = new Date(ovYear, ovMon - 1, 1);
+          const monthName = ovDate.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+
+          const shiftOvMonth = (delta: number) => {
+            const d = new Date(ovYear, ovMon - 1 + delta, 1);
+            setOverviewMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+          };
+
+          // Collect months that have any data (for the mini dot strip)
+          const dataMonths = new Set<string>();
+          bookings.forEach(b => { if (b.checkIn) dataMonths.add(b.checkIn.slice(0, 7)); });
+          expenses.forEach(e => { if (e.date)    dataMonths.add(e.date.slice(0, 7)); });
+
+          // P&L for the selected month
+          const monthBookings = bookings.filter(b => b.status !== "cancelled" && b.checkIn.startsWith(overviewMonth));
+          const monthExpenses = expenses.filter(e => e.date.startsWith(overviewMonth));
+          const actualRevenue = monthBookings.reduce((s, b) => s + b.amountPaid, 0);
+          const fixedCosts    = financialData.monthlyRent + financialData.monthlyUtilities + financialData.monthlyCleaner;
+          const monthExpTotal = monthExpenses.reduce((s, e) => s + e.amount, 0);
+          const actualProfit  = actualRevenue - fixedCosts - monthExpTotal;
+          const hasBookings   = monthBookings.length > 0;
+
+          // When no bookings exist for the month, use 0 — no projection fallback
+          const displayProfit  = hasBookings ? actualProfit : 0;
+          const profitIsActual = hasBookings;
+
+          // Build a 12-month strip (current month ± 5) for the month picker
+          const stripMonths: string[] = [];
+          for (let i = -5; i <= 6; i++) {
+            const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+            stripMonths.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+          }
+
+          return (
+            <div className="ov2-root">
+              {/* ── Greeting banner ── */}
+              <div className="ov2-greeting" style={{ borderColor: `${listing.color}33`, background: `${listing.color}08` }}>
+                <div className="ov2-greeting-left">
+                  {isCurrentMonth && <p className="ov2-hello">{greeting} 👋</p>}
+                  <h2 className="ov2-tagline">
+                    Let&apos;s see your books<span className="ov2-tagline-month"> — {monthName}</span>
+                  </h2>
+                  <p className="ov2-tagline-sub">
+                    {hasBookings
+                      ? `${monthBookings.length} booking${monthBookings.length !== 1 ? "s" : ""} · ${formatCurrency(actualRevenue)} collected`
+                      : isCurrentMonth
+                        ? "No bookings logged yet this month — figures below are projections."
+                        : "No bookings recorded for this month."}
+                  </p>
                 </div>
-                <span className="cta-arrow">→</span>
-              </button>
-              <button className="cta-card" onClick={() => setActiveTab("calendar")}>
-                <span>📅</span>
-                <div>
-                  <div className="cta-title">Sync Calendars</div>
-                  <div className="cta-desc">Connect Airbnb, Booking.com, VRBO and more</div>
+                <div className="ov2-greeting-badge" style={{ color: listing.color, borderColor: `${listing.color}44`, background: `${listing.color}12` }}>
+                  {listing.type}
                 </div>
-                <span className="cta-arrow">→</span>
-              </button>
-              <button className="cta-card" onClick={() => setActiveTab("expenses")}>
-                <span>🧾</span>
-                <div>
-                  <div className="cta-title">Track Expenses</div>
-                  <div className="cta-desc">Log costs to see where your money is going</div>
+              </div>
+
+              {/* ── Month navigation ── */}
+              <div className="ov2-month-nav">
+                <button className="ov2-mn-arrow" onClick={() => { shiftOvMonth(-1); setShowMonthPicker(false); }} title="Previous month">‹</button>
+
+                <div className="ov2-mn-picker-wrap">
+                  <button
+                    className={`ov2-mn-filter-btn${showMonthPicker ? " open" : ""}`}
+                    onClick={() => setShowMonthPicker(v => !v)}
+                  >
+                    <span className="ov2-mn-filter-label">{monthName}</span>
+                    {hasBookings && <span className="ov2-mn-filter-dot" />}
+                    <span className="ov2-mn-filter-chevron">{showMonthPicker ? "▲" : "▼"}</span>
+                  </button>
+
+                  {showMonthPicker && (
+                    <>
+                      <div className="ov2-picker-backdrop" onClick={() => setShowMonthPicker(false)} />
+                      <div className="ov2-picker-dropdown">
+                        {stripMonths.map(mk => {
+                          const [y, m] = mk.split("-").map(Number);
+                          const fullLabel = new Date(y, m - 1, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
+                          const isSelected = mk === overviewMonth;
+                          const isToday    = mk === todayKey;
+                          const hasData    = dataMonths.has(mk);
+                          return (
+                            <button
+                              key={mk}
+                              className={`ov2-picker-item${isSelected ? " selected" : ""}${isToday ? " today" : ""}`}
+                              onClick={() => { setOverviewMonth(mk); setShowMonthPicker(false); }}
+                            >
+                              <span className="ov2-picker-item-label">{fullLabel}</span>
+                              <span className="ov2-picker-item-right">
+                                {isToday && <span className="ov2-picker-tag">Current</span>}
+                                {hasData && <span className="ov2-picker-data-dot" />}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
                 </div>
-                <span className="cta-arrow">→</span>
-              </button>
+
+                <button className="ov2-mn-arrow" onClick={() => { shiftOvMonth(1); setShowMonthPicker(false); }} title="Next month">›</button>
+
+                {!isCurrentMonth && (
+                  <button className="ov2-mn-today" onClick={() => { setOverviewMonth(todayKey); setShowMonthPicker(false); }}>
+                    Today
+                  </button>
+                )}
+              </div>
+
+              {/* ── 4 KPI cards ── */}
+              <div className="ov2-cards">
+                {/* Setup Budget */}
+                <div className="ov2-card">
+                  <div className="ov2-card-icon">💰</div>
+                  <div className="ov2-card-label">Total Setup Budget</div>
+                  <div className="ov2-card-value">{formatCurrency(totalSetupCost)}</div>
+                  <div className="ov2-card-sub">
+                    {totalSetupCost > 0 ? "Initial capital invested" : "Set up in Financials →"}
+                  </div>
+                </div>
+
+                {/* Price per stay */}
+                <div className="ov2-card">
+                  <div className="ov2-card-icon">🛏️</div>
+                  <div className="ov2-card-label">Price Per Stay</div>
+                  <div className="ov2-card-value">{formatCurrency(financialData.chargePerStay)}</div>
+                  <div className="ov2-card-sub">
+                    {financialData.discountPercent > 0
+                      ? `Net after ${financialData.discountPercent}% fee: ${formatCurrency(effectiveRate)}`
+                      : financialData.chargePerStay > 0 ? "Listed price · no platform fee set" : "Set in Financials →"}
+                  </div>
+                </div>
+
+                {/* Projected sales */}
+                <div className="ov2-card" style={{ borderColor: "#81b29a22" }}>
+                  <div className="ov2-card-icon">📈</div>
+                  <div className="ov2-card-label">Projected Sales — {monthName}</div>
+                  <div className="ov2-card-value" style={{ color: "#81b29a" }}>{formatCurrency(projectedSales)}</div>
+                  <div className="ov2-card-sub">
+                    {financialData.projectedStaysPerMonth > 0
+                      ? `${financialData.projectedStaysPerMonth} stays × ${formatCurrency(effectiveRate)}/stay`
+                      : "Set stays/month in Financials →"}
+                  </div>
+                  <div className="ov2-card-actual">
+                    <span className="ov2-actual-dot" />
+                    Actual collected: {formatCurrency(actualRevenue)}
+                  </div>
+                </div>
+
+                {/* Profit */}
+                <div className="ov2-card" style={{ borderColor: displayProfit >= 0 ? "#81b29a22" : "#e07a5f22", background: displayProfit >= 0 ? "#0f1a1488" : "#1a100f88" }}>
+                  <div className="ov2-card-icon">{displayProfit >= 0 ? "✅" : "⚠️"}</div>
+                  <div className="ov2-card-label">
+                    {profitIsActual ? "Actual Profit" : "Projected Profit"} — {monthName}
+                  </div>
+                  <div className="ov2-card-value ov2-profit-val" style={{ color: displayProfit >= 0 ? "#81b29a" : "#e07a5f" }}>
+                    {formatCurrency(Math.abs(displayProfit))}
+                    <span className="ov2-profit-sign">{displayProfit >= 0 ? " profit" : " loss"}</span>
+                  </div>
+                  <div className="ov2-card-sub">
+                    {profitIsActual
+                      ? `${formatCurrency(actualRevenue)} revenue − ${formatCurrency(fixedCosts)} fixed − ${formatCurrency(monthExpTotal)} expenses`
+                      : "No bookings recorded for this month"}
+                  </div>
+                  {!profitIsActual && (
+                    <div className="ov2-card-actual">
+                      <span className="ov2-proj-dot" />
+                      {isCurrentMonth ? "Log a booking to start tracking" : "No data for this month"}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* ── Quick-action row ── */}
+              <div className="ov2-cta-row">
+                <button className="ov2-cta" onClick={() => setActiveTab("bookings")}>
+                  <span>📋</span>
+                  <div>
+                    <div className="cta-title">Log a Booking</div>
+                    <div className="cta-desc">Add guest, dates, payment status</div>
+                  </div>
+                  <span className="cta-arrow">→</span>
+                </button>
+                <button className="ov2-cta" onClick={() => setActiveTab("expenses")}>
+                  <span>🧾</span>
+                  <div>
+                    <div className="cta-title">Log an Expense</div>
+                    <div className="cta-desc">Track costs for {monthName}</div>
+                  </div>
+                  <span className="cta-arrow">→</span>
+                </button>
+                <button className="ov2-cta" onClick={() => setActiveTab("summary")}>
+                  <span>📊</span>
+                  <div>
+                    <div className="cta-title">View Full P&amp;L History</div>
+                    <div className="cta-desc">Every month saved automatically</div>
+                  </div>
+                  <span className="cta-arrow">→</span>
+                </button>
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {activeTab === "financials" && (
           <FinancialCalculator data={financialData} onChange={setFinancialData} />
         )}
 
-        {activeTab === "summary" && (
-          <div className="summary-section">
-            <div className="sum-header">
-              <div>
-                <h2 className="sum-title">Financial Summary</h2>
-                <p className="sum-desc">
-                  Project your sales and see your full profit &amp; loss in one place.
+        {activeTab === "summary" && (() => {
+          // ── Monthly P&L history ──────────────────────────────────────────────
+          const today = new Date();
+          const currentMonthKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+
+          // Collect every month that has any data, always include current month
+          const monthSet = new Set<string>([currentMonthKey]);
+          bookings.forEach((b) => { if (b.checkIn) monthSet.add(b.checkIn.slice(0, 7)); });
+          expenses.forEach((e) => { if (e.date)   monthSet.add(e.date.slice(0, 7)); });
+          const allMonthKeys = [...monthSet].sort((a, b) => b.localeCompare(a)); // newest first
+
+          const getMonthLabel = (key: string) => {
+            const [y, m] = key.split("-").map(Number);
+            return new Date(y, m - 1, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
+          };
+
+          // Build per-month P&L
+          const monthlyPnl = allMonthKeys.map((key) => {
+            const mBookings = bookings.filter((b) => b.status !== "cancelled" && b.checkIn.startsWith(key));
+            const mExpenses = expenses.filter((e) => e.date.startsWith(key));
+            const revenue       = mBookings.reduce((s, b) => s + b.amountPaid, 0);
+            const pendingRev    = mBookings.reduce((s, b) => s + Math.max(0, b.chargeAmount - b.discountAmount - b.amountPaid), 0);
+            const discountsGiven = mBookings.reduce((s, b) => s + b.discountAmount, 0);
+            const grossCharged  = mBookings.reduce((s, b) => s + b.chargeAmount, 0);
+            const mExpTotal     = mExpenses.reduce((s, e) => s + e.amount, 0);
+            const fixedCosts    = financialData.monthlyRent + financialData.monthlyUtilities + financialData.monthlyCleaner;
+            const totalCosts    = fixedCosts + mExpTotal;
+            const profit        = revenue - totalCosts;
+            const catBreakdown  = Object.entries(
+              mExpenses.reduce<Record<string, number>>((acc, e) => {
+                acc[e.category] = (acc[e.category] || 0) + e.amount;
+                return acc;
+              }, {})
+            ).map(([name, total]) => ({ name, total })).sort((a, b) => b.total - a.total);
+
+            return {
+              key, label: getMonthLabel(key), isCurrentMonth: key === currentMonthKey,
+              bookings: mBookings, expenses: mExpenses, catBreakdown,
+              revenue, pendingRev, discountsGiven, grossCharged,
+              expensesTotal: mExpTotal, fixedCosts, totalCosts, profit,
+            };
+          });
+
+          // All-time totals
+          const atRevenue   = monthlyPnl.reduce((s, m) => s + m.revenue, 0);
+          const atExpenses  = monthlyPnl.reduce((s, m) => s + m.expensesTotal, 0);
+          const atProfit    = monthlyPnl.reduce((s, m) => s + m.profit, 0);
+          const atBookings  = bookings.filter((b) => b.status !== "cancelled").length;
+          const atDiscounts = bookings.reduce((s, b) => s + b.discountAmount, 0);
+
+          const isExpanded = (k: string) => summaryExpandedMonths.has(k);
+          const toggleExpand = (k: string) =>
+            setSummaryExpandedMonths((prev) => {
+              const next = new Set(prev);
+              next.has(k) ? next.delete(k) : next.add(k);
+              return next;
+            });
+
+          return (
+            <div className="ms-root">
+              {/* Header */}
+              <div className="ms-header">
+                <h2 className="ms-title">Monthly P&amp;L History</h2>
+                <p className="ms-desc">
+                  Every month is saved automatically — bookings collected, fixed costs, and logged expenses combined into a single profit figure.
                 </p>
               </div>
-            </div>
 
-            <div className="sum-layout">
-              {/* ── LEFT: Projected Sales Inputs ── */}
-              <section className="proj-panel">
-                <div className="proj-heading">
-                  <h3 className="proj-title">Projected Sales</h3>
-                  <p className="proj-desc">How much per stay, how many stays, and any platform deductions.</p>
+              {/* All-time stats */}
+              <div className="ms-alltime">
+                <div className="ms-at-item">
+                  <span className="ms-at-label">All-time Revenue</span>
+                  <span className="ms-at-value ms-green">{formatCurrency(atRevenue)}</span>
                 </div>
-
-                <div className="proj-fields">
-                  <div className="proj-field">
-                    <label className="proj-label">Price Per Stay</label>
-                    <div className="proj-input-wrap">
-                      <span className="proj-prefix">KSh</span>
-                      <input
-                        type="number"
-                        min="0"
-                        className="proj-input"
-                        value={financialData.chargePerStay || ""}
-                        placeholder="0"
-                        onChange={(e) =>
-                          setFinancialData((prev) => ({
-                            ...prev,
-                            chargePerStay: parseFloat(e.target.value) || 0,
-                          }))
-                        }
-                      />
-                    </div>
-                    <p className="proj-hint">Amount the guest pays per booking</p>
-                  </div>
-
-                  <div className="proj-field">
-                    <label className="proj-label">Stays Per Month</label>
-                    <div className="proj-input-wrap">
-                      <input
-                        type="number"
-                        min="0"
-                        className="proj-input proj-input-bare"
-                        value={financialData.projectedStaysPerMonth || ""}
-                        placeholder="0"
-                        onChange={(e) =>
-                          setFinancialData((prev) => ({
-                            ...prev,
-                            projectedStaysPerMonth: parseFloat(e.target.value) || 0,
-                          }))
-                        }
-                      />
-                    </div>
-                    <p className="proj-hint">Expected bookings each month</p>
-                  </div>
-
-                  <div className="proj-field">
-                    <label className="proj-label">Discount / Platform Fee</label>
-                    <div className="proj-input-wrap">
-                      <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        className="proj-input proj-input-bare"
-                        value={financialData.discountPercent || ""}
-                        placeholder="0"
-                        onChange={(e) =>
-                          setFinancialData((prev) => ({
-                            ...prev,
-                            discountPercent: parseFloat(e.target.value) || 0,
-                          }))
-                        }
-                      />
-                      <span className="proj-suffix">%</span>
-                    </div>
-                    <p className="proj-hint">e.g. Airbnb takes 3%</p>
-                  </div>
+                <div className="ms-at-item">
+                  <span className="ms-at-label">Expenses Logged</span>
+                  <span className="ms-at-value ms-red">{formatCurrency(atExpenses)}</span>
                 </div>
-
-                {financialData.discountPercent > 0 && (
-                  <div className="proj-discount-note">
-                    Effective rate after {financialData.discountPercent}% deduction:{" "}
-                    <strong>{formatCurrency(effectiveRate)}</strong> per stay
-                  </div>
-                )}
-
-                {totalSetupCost === 0 && monthlyOperatingExpenses === 0 && (
-                  <div className="proj-notice">
-                    💡 Set your{" "}
-                    <button className="proj-link" onClick={() => setActiveTab("financials")}>
-                      Initial Setup Capital &amp; Monthly Expenses
-                    </button>{" "}
-                    first for a complete picture.
-                  </div>
-                )}
-              </section>
-
-              {/* ── RIGHT: Financial Summary ── */}
-              <div className="fin-summary-panel">
-                {/* Break-even hero */}
-                <div className={`bev-hero ${daysToBreakEven ? "bev-profit" : "bev-loss"}`}>
-                  <span className="bev-label">Days to Become Profitable</span>
-                  <span className="bev-value">
-                    {daysToBreakEven ? daysToBreakEven.toLocaleString() : "—"}
-                  </span>
-                  <span className="bev-sub">
-                    {daysToBreakEven
-                      ? `${formatCurrency(totalSetupCost)} capital ÷ ${formatCurrency(monthlyProfit)}/mo profit`
-                      : "Not profitable at current rates — review expenses or pricing"}
+                <div className="ms-at-item">
+                  <span className="ms-at-label">All-time Profit</span>
+                  <span className="ms-at-value" style={{ color: atProfit >= 0 ? "#81b29a" : "#e07a5f" }}>
+                    {formatCurrency(atProfit)}
                   </span>
                 </div>
-
-                {/* Monthly P&L */}
-                <div className="pnl-card">
-                  <h3 className="pnl-card-title">Monthly P&amp;L</h3>
-                  <div className="pnl-row">
-                    <span>Revenue ({financialData.projectedStaysPerMonth} stays)</span>
-                    <span className="pos">{formatCurrency(projectedSales)}</span>
-                  </div>
-                  <div className="pnl-row">
-                    <span>Rent</span>
-                    <span className="neg">− {formatCurrency(financialData.monthlyRent)}</span>
-                  </div>
-                  <div className="pnl-row">
-                    <span>Utilities</span>
-                    <span className="neg">− {formatCurrency(financialData.monthlyUtilities)}</span>
-                  </div>
-                  <div className="pnl-row">
-                    <span>Cleaner</span>
-                    <span className="neg">− {formatCurrency(financialData.monthlyCleaner)}</span>
-                  </div>
-                  <div className="pnl-divider" />
-                  <div className="pnl-row pnl-total">
-                    <span>Net Profit</span>
-                    <span style={{ color: monthlyProfit >= 0 ? "#81b29a" : "#e07a5f" }}>
-                      {formatCurrency(monthlyProfit)}
-                    </span>
-                  </div>
+                <div className="ms-at-item">
+                  <span className="ms-at-label">Total Bookings</span>
+                  <span className="ms-at-value">{atBookings}</span>
                 </div>
+                {atDiscounts > 0 && (
+                  <div className="ms-at-item">
+                    <span className="ms-at-label">Discounts Given</span>
+                    <span className="ms-at-value ms-amber">{formatCurrency(atDiscounts)}</span>
+                  </div>
+                )}
+              </div>
 
-                {/* Snap cards */}
-                <div className="sum-snap-grid">
-                  <div className="sum-snap">
-                    <span className="sum-snap-label">Annual Profit</span>
-                    <span
-                      className="sum-snap-value"
-                      style={{ color: monthlyProfit >= 0 ? "#81b29a" : "#e07a5f" }}
-                    >
-                      {formatCurrency(monthlyProfit * 12)}
-                    </span>
-                  </div>
-                  <div className="sum-snap">
-                    <span className="sum-snap-label">Profit Margin</span>
-                    <span
-                      className="sum-snap-value"
-                      style={{ color: monthlyProfit >= 0 ? "#81b29a" : "#e07a5f" }}
-                    >
-                      {projectedSales > 0
-                        ? ((monthlyProfit / projectedSales) * 100).toFixed(1)
-                        : "0.0"}
-                      %
-                    </span>
-                  </div>
-                  <div className="sum-snap">
-                    <span className="sum-snap-label">Total Capital</span>
-                    <span className="sum-snap-value">{formatCurrency(totalSetupCost)}</span>
-                  </div>
-                  <div className="sum-snap">
-                    <span className="sum-snap-label">Monthly Expenses</span>
-                    <span className="sum-snap-value neg">
-                      {formatCurrency(monthlyOperatingExpenses)}
-                    </span>
-                  </div>
+              {/* Setup prompt */}
+              {atBookings === 0 && expenses.length === 0 && (
+                <div className="ms-empty">
+                  <span>📊</span>
+                  <p>
+                    Set up your{" "}
+                    <button className="ms-link" onClick={() => setActiveTab("financials")}>Financials</button>,
+                    log{" "}
+                    <button className="ms-link" onClick={() => setActiveTab("bookings")}>Bookings</button>,
+                    and track{" "}
+                    <button className="ms-link" onClick={() => setActiveTab("expenses")}>Expenses</button>{" "}
+                    to see your monthly history here.
+                  </p>
                 </div>
+              )}
+
+              {/* Month cards */}
+              <div className="ms-months">
+                {monthlyPnl.map((month) => (
+                  <div
+                    key={month.key}
+                    className="ms-card"
+                    style={month.isCurrentMonth ? { borderColor: `${listing.color}66` } : {}}
+                  >
+                    {/* Card header — always visible, click to expand/collapse */}
+                    <button className="ms-card-head" onClick={() => toggleExpand(month.key)}>
+                      <div className="ms-head-left">
+                        <span className="ms-month-name">{month.label}</span>
+                        {month.isCurrentMonth && (
+                          <span className="ms-badge" style={{ background: `${listing.color}22`, color: listing.color, borderColor: `${listing.color}44` }}>
+                            Current
+                          </span>
+                        )}
+                        <span className="ms-bk-count">
+                          {month.bookings.length} booking{month.bookings.length !== 1 ? "s" : ""}
+                          {month.expensesTotal > 0 && ` · ${month.expenses.length} expense${month.expenses.length !== 1 ? "s" : ""}`}
+                        </span>
+                      </div>
+                      <div className="ms-head-right">
+                        <div className="ms-head-nums">
+                          <span className="ms-head-col">
+                            <span className="ms-head-col-label">Revenue</span>
+                            <span className="ms-head-col-val ms-green">{formatCurrency(month.revenue)}</span>
+                          </span>
+                          <span className="ms-head-div" />
+                          <span className="ms-head-col">
+                            <span className="ms-head-col-label">Costs</span>
+                            <span className="ms-head-col-val ms-red">−{formatCurrency(month.totalCosts)}</span>
+                          </span>
+                          <span className="ms-head-div" />
+                          <span className="ms-head-col">
+                            <span className="ms-head-col-label">{month.profit >= 0 ? "Profit" : "Loss"}</span>
+                            <span className="ms-head-col-val" style={{ color: month.profit >= 0 ? "#81b29a" : "#e07a5f", fontWeight: 800 }}>
+                              {formatCurrency(Math.abs(month.profit))}
+                            </span>
+                          </span>
+                        </div>
+                        <span className="ms-chevron">{isExpanded(month.key) ? "▲" : "▼"}</span>
+                      </div>
+                    </button>
+
+                    {/* Expanded body */}
+                    {isExpanded(month.key) && (
+                      <div className="ms-card-body">
+
+                        {/* Revenue */}
+                        <p className="ms-sec-label">Revenue</p>
+                        {month.bookings.length > 0 ? (
+                          <div className="ms-block">
+                            {month.bookings.map((b) => (
+                              <div key={b.id} className="ms-row">
+                                <span className="ms-row-name">
+                                  {b.guestName}
+                                  <span className="ms-row-meta"> · {b.nights}n · {b.source}</span>
+                                </span>
+                                <span className="ms-row-val ms-green">{formatCurrency(b.amountPaid)}</span>
+                              </div>
+                            ))}
+                            {month.pendingRev > 0 && (
+                              <div className="ms-row ms-row-pending">
+                                <span>Outstanding payments</span>
+                                <span className="ms-amber">{formatCurrency(month.pendingRev)}</span>
+                              </div>
+                            )}
+                            <div className="ms-row ms-row-sub">
+                              <span>Total collected</span>
+                              <span className="ms-green">{formatCurrency(month.revenue)}</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="ms-empty-row">
+                            No bookings logged.
+                            {month.isCurrentMonth && (
+                              <button className="ms-link" onClick={() => setActiveTab("bookings")}> Add booking →</button>
+                            )}
+                          </div>
+                        )}
+
+                        <div className="ms-divider" />
+
+                        {/* Fixed costs */}
+                        <p className="ms-sec-label">Fixed Monthly Costs</p>
+                        <div className="ms-block">
+                          {financialData.monthlyRent > 0 && (
+                            <div className="ms-row">
+                              <span>Rent</span>
+                              <span className="ms-row-val ms-red">−{formatCurrency(financialData.monthlyRent)}</span>
+                            </div>
+                          )}
+                          {financialData.monthlyUtilities > 0 && (
+                            <div className="ms-row">
+                              <span>Utilities</span>
+                              <span className="ms-row-val ms-red">−{formatCurrency(financialData.monthlyUtilities)}</span>
+                            </div>
+                          )}
+                          {financialData.monthlyCleaner > 0 && (
+                            <div className="ms-row">
+                              <span>Cleaner</span>
+                              <span className="ms-row-val ms-red">−{formatCurrency(financialData.monthlyCleaner)}</span>
+                            </div>
+                          )}
+                          {month.fixedCosts === 0 && (
+                            <div className="ms-empty-row">
+                              No fixed costs set.{" "}
+                              <button className="ms-link" onClick={() => setActiveTab("financials")}>Set in Financials →</button>
+                            </div>
+                          )}
+                          {month.fixedCosts > 0 && (
+                            <div className="ms-row ms-row-sub">
+                              <span>Total fixed costs</span>
+                              <span className="ms-row-val ms-red">−{formatCurrency(month.fixedCosts)}</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Expenses */}
+                        {month.expensesTotal > 0 && (
+                          <>
+                            <div className="ms-divider" />
+                            <p className="ms-sec-label">Expenses Logged ({month.expenses.length})</p>
+                            <div className="ms-block">
+                              {month.catBreakdown.map((cat) => (
+                                <div key={cat.name} className="ms-row">
+                                  <span>{cat.name}</span>
+                                  <span className="ms-row-val ms-red">−{formatCurrency(cat.total)}</span>
+                                </div>
+                              ))}
+                              <div className="ms-row ms-row-sub">
+                                <span>Total expenses</span>
+                                <span className="ms-row-val ms-red">−{formatCurrency(month.expensesTotal)}</span>
+                              </div>
+                            </div>
+                          </>
+                        )}
+
+                        {/* Discounts given */}
+                        {month.discountsGiven > 0 && (
+                          <div className="ms-discount-note">
+                            💡 {formatCurrency(month.discountsGiven)} discounted to guests this month
+                            — without discounts you would have earned {formatCurrency(month.grossCharged)}.
+                          </div>
+                        )}
+
+                        <div className="ms-divider ms-divider-thick" />
+
+                        {/* Net profit */}
+                        <div className="ms-net-row">
+                          <span className="ms-net-label">
+                            {month.profit >= 0 ? "Net Profit" : "Net Loss"} — {month.label}
+                          </span>
+                          <span className="ms-net-val" style={{ color: month.profit >= 0 ? "#81b29a" : "#e07a5f" }}>
+                            {formatCurrency(Math.abs(month.profit))}
+                          </span>
+                        </div>
+                        {month.profit >= 0 && month.revenue > 0 && (
+                          <p className="ms-hint ms-hint-green">
+                            Profit margin: {((month.profit / month.revenue) * 100).toFixed(1)}%
+                          </p>
+                        )}
+                        {month.profit < 0 && effectiveRate > 0 && (
+                          <p className="ms-hint ms-hint-red">
+                            Need {Math.ceil(Math.abs(month.profit) / effectiveRate)} more booking{Math.ceil(Math.abs(month.profit) / effectiveRate) !== 1 ? "s" : ""} at {formatCurrency(effectiveRate)}/stay to break even.
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             </div>
-          </div>
+          );
+        })()}
+
+        {activeTab === "bookings" && (
+          <BookingTracker
+            bookings={bookings}
+            onAddBooking={addBooking}
+            onUpdateBooking={updateBooking}
+            onDeleteBooking={deleteBooking}
+            accentColor={listing.color}
+          />
         )}
 
         {activeTab === "expenses" && (
@@ -533,6 +814,8 @@ export default function ListingDashboard({
             onAddSource={addCalendarSource}
             onRemoveSource={removeCalendarSource}
             onSync={syncCalendarSource}
+            onImportBookings={importBookingsFromIcal}
+            bookings={bookings}
           />
         )}
 
@@ -684,6 +967,9 @@ export default function ListingDashboard({
           flex-direction: column;
           min-height: 100vh;
           font-family: 'DM Sans', sans-serif;
+          min-width: 0;
+          max-width: 100%;
+          overflow-x: hidden;
         }
 
         /* ── HEADER ── */
@@ -730,7 +1016,7 @@ export default function ListingDashboard({
         }
         .listing-header-info { flex: 1; min-width: 0; }
         .listing-name-row { display: flex; align-items: center; gap: 10px; margin-bottom: 3px; flex-wrap: wrap; }
-        .listing-name { font-size: 20px; font-weight: 700; color: #e8e3d9; margin: 0; letter-spacing: -0.4px; }
+        .listing-name { font-size: 20px; font-weight: 700; color: #e8e3d9; margin: 0; letter-spacing: -0.4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
         .listing-type-badge {
           padding: 2px 9px;
           background: #161924;
@@ -782,38 +1068,83 @@ export default function ListingDashboard({
         .tab-content {
           padding: 24px;
           flex: 1;
+          min-width: 0;
+          max-width: 100%;
+          box-sizing: border-box;
+          overflow-x: hidden;
         }
 
-        /* ── OVERVIEW GRID ── */
-        .overview-grid {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 14px;
+        /* ── OVERVIEW v2 ── */
+        .ov2-root { display: flex; flex-direction: column; gap: 16px; }
+
+        .ov2-greeting {
+          border: 1px solid transparent;
+          border-radius: 14px;
+          padding: 20px 22px;
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 12px;
         }
-        .overview-card {
+        .ov2-greeting-left { display: flex; flex-direction: column; gap: 4px; }
+        .ov2-hello { font-size: 12px; color: #5a6080; margin: 0; letter-spacing: 0.4px; }
+        .ov2-tagline { font-size: 22px; font-weight: 700; color: #e8e3d9; margin: 0; line-height: 1.2; }
+        .ov2-tagline-month { color: #81b29a; font-weight: 400; }
+        .ov2-tagline-sub { font-size: 12px; color: #5a6080; margin: 6px 0 0; line-height: 1.5; }
+        .ov2-greeting-badge {
+          flex-shrink: 0;
+          font-size: 11px;
+          font-weight: 600;
+          letter-spacing: 0.6px;
+          text-transform: uppercase;
+          border: 1px solid transparent;
+          border-radius: 20px;
+          padding: 5px 12px;
+          margin-top: 2px;
+        }
+
+        .ov2-cards {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 12px;
+        }
+        .ov2-card {
           background: #161924;
           border: 1px solid #1e2130;
           border-radius: 12px;
-          padding: 16px;
+          padding: 18px 16px 14px;
           display: flex;
-          align-items: flex-start;
-          gap: 12px;
+          flex-direction: column;
+          gap: 4px;
+          transition: border-color 0.15s;
         }
-        .overview-card.highlight { border-color: inherit; }
-        .ov-icon { font-size: 20px; flex-shrink: 0; margin-top: 2px; }
-        .ov-title { font-size: 10px; color: #5a6080; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 3px; }
-        .ov-value { font-size: 16px; font-weight: 700; color: #e8e3d9; margin-bottom: 2px; word-break: break-all; }
-        .ov-sub { font-size: 11px; color: #4a5068; line-height: 1.4; }
+        .ov2-card-icon { font-size: 18px; margin-bottom: 4px; }
+        .ov2-card-label { font-size: 10px; color: #5a6080; text-transform: uppercase; letter-spacing: 0.8px; }
+        .ov2-card-value { font-size: 22px; font-weight: 700; color: #e8e3d9; line-height: 1.1; margin-top: 4px; word-break: break-word; overflow-wrap: anywhere; }
+        .ov2-profit-val { font-size: 26px; }
+        .ov2-profit-sign { font-size: 12px; font-weight: 400; opacity: 0.7; }
+        .ov2-card-sub { font-size: 11px; color: #4a5068; line-height: 1.4; margin-top: 4px; }
+        .ov2-card-actual {
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          font-size: 11px;
+          color: #81b29a;
+          margin-top: 8px;
+          padding-top: 8px;
+          border-top: 1px solid #1e2130;
+        }
+        .ov2-actual-dot { width: 6px; height: 6px; border-radius: 50%; background: #81b29a; flex-shrink: 0; }
+        .ov2-proj-dot  { width: 6px; height: 6px; border-radius: 50%; background: #f2cc8f; flex-shrink: 0; }
+        .ov2-card-actual:has(.ov2-proj-dot) { color: #f2cc8f; }
 
-        /* ── CTA ROW ── */
-        .overview-cta-row {
-          grid-column: 1 / -1;
+        /* ── CTA ROW (shared .cta-title / .cta-desc / .cta-arrow) ── */
+        .ov2-cta-row {
           display: grid;
           grid-template-columns: repeat(3, 1fr);
           gap: 10px;
-          margin-top: 6px;
         }
-        .cta-card {
+        .ov2-cta {
           background: #111520;
           border: 1px dashed #2a3050;
           border-radius: 10px;
@@ -827,29 +1158,194 @@ export default function ListingDashboard({
           transition: all 0.15s;
           font-size: 20px;
         }
-        .cta-card:hover { border-color: #81B29A; background: #0f1a14; }
+        .ov2-cta:hover { border-color: #81B29A; background: #0f1a14; }
         .cta-title { font-size: 13px; font-weight: 600; color: #c8c3b8; margin-bottom: 2px; }
         .cta-desc { font-size: 11px; color: #4a5068; line-height: 1.4; }
         .cta-arrow { margin-left: auto; color: #2a3050; font-size: 16px; }
-        .cta-card:hover .cta-arrow { color: #81B29A; }
+        .ov2-cta:hover .cta-arrow { color: #81B29A; }
+
+        /* ── OVERVIEW MONTH NAV ── */
+        .ov2-month-nav {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          background: #111520;
+          border: 1px solid #1e2130;
+          border-radius: 12px;
+          padding: 8px 10px;
+        }
+        .ov2-mn-arrow {
+          background: #1e2130;
+          border: none;
+          color: #8899aa;
+          font-size: 18px;
+          line-height: 1;
+          width: 32px;
+          height: 32px;
+          border-radius: 6px;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+          transition: background 0.15s, color 0.15s;
+        }
+        .ov2-mn-arrow:hover { background: #2a3050; color: #e8e3d9; }
+
+        /* Filter button */
+        .ov2-mn-picker-wrap {
+          flex: 1;
+          position: relative;
+          min-width: 0;
+        }
+        .ov2-mn-filter-btn {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 8px 12px;
+          background: #1e2130;
+          border: 1px solid #2a3050;
+          border-radius: 8px;
+          cursor: pointer;
+          font-family: inherit;
+          transition: border-color 0.15s, background 0.15s;
+          text-align: left;
+        }
+        .ov2-mn-filter-btn:hover,
+        .ov2-mn-filter-btn.open { border-color: #81b29a55; background: #1c2540; }
+        .ov2-mn-filter-label {
+          flex: 1;
+          font-size: 14px;
+          font-weight: 600;
+          color: #e8e3d9;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .ov2-mn-filter-dot {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: #81b29a;
+          flex-shrink: 0;
+        }
+        .ov2-mn-filter-chevron {
+          font-size: 9px;
+          color: #5a6080;
+          flex-shrink: 0;
+        }
+
+        /* Backdrop */
+        .ov2-picker-backdrop {
+          position: fixed;
+          inset: 0;
+          z-index: 49;
+        }
+
+        /* Dropdown list */
+        .ov2-picker-dropdown {
+          position: absolute;
+          top: calc(100% + 6px);
+          left: 0;
+          right: 0;
+          background: #161924;
+          border: 1px solid #2a3050;
+          border-radius: 10px;
+          box-shadow: 0 8px 32px rgba(0,0,0,0.55);
+          z-index: 50;
+          overflow: hidden;
+          max-height: 320px;
+          overflow-y: auto;
+          scrollbar-width: thin;
+          scrollbar-color: #2a3050 transparent;
+        }
+        .ov2-picker-dropdown::-webkit-scrollbar { width: 4px; }
+        .ov2-picker-dropdown::-webkit-scrollbar-thumb { background: #2a3050; border-radius: 2px; }
+
+        .ov2-picker-item {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+          padding: 11px 14px;
+          background: none;
+          border: none;
+          border-bottom: 1px solid #1e2130;
+          cursor: pointer;
+          font-family: inherit;
+          text-align: left;
+          transition: background 0.12s;
+        }
+        .ov2-picker-item:last-child { border-bottom: none; }
+        .ov2-picker-item:hover { background: #1c2138; }
+        .ov2-picker-item.selected { background: #1a2430; }
+        .ov2-picker-item-label {
+          font-size: 13px;
+          color: #8a9080;
+          transition: color 0.12s;
+        }
+        .ov2-picker-item.selected .ov2-picker-item-label,
+        .ov2-picker-item.today .ov2-picker-item-label { color: #81b29a; font-weight: 600; }
+        .ov2-picker-item-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+        .ov2-picker-tag {
+          font-size: 10px;
+          font-weight: 600;
+          color: #81b29a;
+          background: #81b29a18;
+          border: 1px solid #81b29a44;
+          border-radius: 4px;
+          padding: 1px 6px;
+          white-space: nowrap;
+        }
+        .ov2-picker-data-dot {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: #81b29a;
+          opacity: 0.7;
+        }
+
+        /* Today button */
+        .ov2-mn-today {
+          background: #1e2130;
+          border: 1px solid #2a3050;
+          color: #81b29a;
+          font-size: 11px;
+          font-family: inherit;
+          font-weight: 600;
+          padding: 6px 11px;
+          border-radius: 8px;
+          cursor: pointer;
+          flex-shrink: 0;
+          white-space: nowrap;
+          transition: background 0.15s;
+        }
+        .ov2-mn-today:hover { background: #2a3050; }
 
         /* ── TABLET (≤ 900px) ── */
         @media (max-width: 900px) {
-          .overview-grid { grid-template-columns: repeat(2, 1fr); }
-          .overview-cta-row { grid-template-columns: repeat(2, 1fr); }
           .listing-quick-stats { display: none; }
           .tab-content { padding: 16px; }
+
+          /* Overview */
+          .ov2-cards   { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+          .ov2-cta-row { grid-template-columns: repeat(2, 1fr); }
+          .ov2-tagline { font-size: 20px; }
         }
 
         /* ── MOBILE (≤ 600px) ── */
         @media (max-width: 600px) {
           /* Header */
-          .listing-header { padding: 12px 14px; gap: 10px; flex-wrap: nowrap; }
+          .listing-header { padding: 12px 14px; gap: 10px; flex-wrap: nowrap; overflow: hidden; }
+          .listing-header-info { min-width: 0; overflow: hidden; }
+          .listing-name-row { flex-wrap: nowrap; overflow: hidden; }
           .listing-name { font-size: 16px; }
           .listing-type-badge { display: none; }
-          .listing-address { font-size: 11px; }
+          .listing-address { font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-          /* Tabs — icons only, text hidden to fit 5 tabs */
+          /* Tabs — icons only on mobile */
           .tab-item { padding: 10px 12px; font-size: 0; gap: 0; }
           .tab-item span:first-child { font-size: 18px; }
           .tab-item span:last-child { display: none; }
@@ -858,21 +1354,95 @@ export default function ListingDashboard({
           /* Tab content */
           .tab-content { padding: 12px; }
 
-          /* Overview grid */
-          .overview-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
-          .overview-cta-row { grid-template-columns: 1fr; }
-          .overview-card { padding: 12px; gap: 10px; }
-          .ov-icon { font-size: 17px; }
-          .ov-value { font-size: 14px; word-break: break-word; }
-          .ov-sub { font-size: 10px; }
-          .cta-card { padding: 12px; font-size: 17px; }
+          /* Overview root */
+          .ov2-root { gap: 12px; }
+
+          /* Greeting banner */
+          .ov2-greeting { padding: 14px; flex-direction: column; gap: 8px; }
+          .ov2-greeting-badge { align-self: flex-start; font-size: 10px; padding: 4px 10px; }
+          .ov2-hello { font-size: 11px; }
+          .ov2-tagline { font-size: 17px; }
+          .ov2-tagline-month { display: block; }
+          .ov2-tagline-sub { font-size: 11px; }
+
+          /* Month nav */
+          .ov2-month-nav { padding: 6px 8px; gap: 6px; }
+          .ov2-mn-arrow { width: 28px; height: 28px; font-size: 16px; }
+          .ov2-mn-filter-label { font-size: 13px; }
+          .ov2-mn-today { font-size: 10px; padding: 5px 8px; }
+
+          /* KPI cards — 2 columns on mobile */
+          .ov2-cards { grid-template-columns: 1fr 1fr; gap: 10px; }
+          .ov2-cards > .ov2-card:last-child { grid-column: auto; }
+          .ov2-card { padding: 14px 12px; gap: 3px; }
+          .ov2-card-icon { font-size: 16px; margin-bottom: 2px; }
+          .ov2-card-label { font-size: 9px; }
+          .ov2-card-value { font-size: 18px; }
+          .ov2-profit-val { font-size: 20px; }
+          .ov2-card-sub { font-size: 10px; }
+          .ov2-card-actual { font-size: 10px; padding-top: 6px; margin-top: 6px; }
+          .ov2-profit-sign { font-size: 11px; }
+
+          /* CTA row */
+          .ov2-cta-row { grid-template-columns: 1fr; }
+          .ov2-cta { padding: 12px; font-size: 18px; }
           .cta-title { font-size: 12px; }
           .cta-desc { font-size: 10px; }
         }
 
+        /* ── SMALL MOBILE (≤ 480px) — summary numbers ── */
+        @media (max-width: 480px) {
+          /* Summary month card header: stack numbers 2+1 */
+          .ms-card-head { padding: 12px 14px; gap: 10px; }
+          .ms-head-right { flex-direction: column; align-items: stretch; gap: 8px; }
+          .ms-head-nums {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px 10px;
+          }
+          .ms-head-div { display: none; }
+          .ms-head-col { align-items: flex-start; }
+          .ms-head-col:last-child { grid-column: 1 / -1; }
+          .ms-head-col-val { font-size: 13px; }
+          .ms-chevron { display: none; }
+          .ms-month-name { font-size: 14px; }
+          .ms-card-body { padding: 0 12px 14px; }
+          .ms-net-val { font-size: 18px; }
+          .ms-net-label { font-size: 13px; }
+          /* All-time grid: 2 columns */
+          .ms-alltime { grid-template-columns: repeat(2, 1fr); }
+
+          /* Overview: greeting stacks */
+          .ov2-greeting { padding: 12px; }
+          .ov2-tagline { font-size: 16px; }
+          /* KPI cards: tighter */
+          .ov2-card-value { font-size: 16px; }
+          .ov2-card { padding: 12px 10px; }
+          .ov2-card-sub { font-size: 9px; }
+          /* CTA: compact */
+          .ov2-cta { gap: 8px; padding: 10px; font-size: 16px; }
+        }
+
+        /* ── SMALL MOBILE (≤ 380px) ── */
         @media (max-width: 380px) {
-          .overview-grid { grid-template-columns: 1fr; }
           .tab-item { padding: 10px 9px; }
+
+          /* Stack all 4 cards vertically */
+          .ov2-cards { grid-template-columns: 1fr; }
+          .ov2-cards > .ov2-card:last-child { grid-column: auto; }
+          .ov2-card-value { font-size: 18px; }
+          .ov2-profit-val { font-size: 18px; }
+          .ov2-tagline { font-size: 15px; }
+
+          /* Tab content tighter */
+          .tab-content { padding: 10px; }
+
+          /* Month nav */
+          .ov2-mn-filter-label { font-size: 12px; }
+          .ov2-mn-today { display: none; }
+
+          /* Summary: single column alltime */
+          .ms-alltime { grid-template-columns: 1fr; }
         }
 
         /* ── SETTINGS TAB ── */
@@ -1101,245 +1671,180 @@ export default function ListingDashboard({
           .stg-btn-delete-confirm { width: 100%; text-align: center; }
         }
 
-        /* ── SUMMARY TAB ── */
-        .summary-section {
+        /* ── MONTHLY SUMMARY TAB ── */
+        .ms-root { display: flex; flex-direction: column; gap: 20px; }
+        .ms-header { display: flex; flex-direction: column; gap: 4px; }
+        .ms-title { font-size: 22px; font-weight: 700; color: #e8e3d9; margin: 0; }
+        .ms-desc  { font-size: 13px; color: #5a6080; margin: 0; line-height: 1.5; }
+
+        /* All-time stats */
+        .ms-alltime {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+          gap: 10px;
+        }
+        .ms-at-item {
+          background: #161924;
+          border: 1px solid #1e2130;
+          border-radius: 10px;
+          padding: 14px 16px;
           display: flex;
           flex-direction: column;
-          gap: 24px;
+          gap: 5px;
         }
-        .sum-header { display: flex; align-items: flex-start; }
-        .sum-title {
-          font-size: 22px;
-          font-weight: 700;
-          color: #e8e3d9;
-          margin: 0 0 6px;
-        }
-        .sum-desc {
+        .ms-at-label { font-size: 10px; color: #5a6080; text-transform: uppercase; letter-spacing: 0.8px; }
+        .ms-at-value { font-size: 18px; font-weight: 800; color: #e8e3d9; }
+
+        /* Empty state */
+        .ms-empty {
+          background: #161924;
+          border: 1px dashed #2a3050;
+          border-radius: 12px;
+          padding: 36px 24px;
+          text-align: center;
+          color: #4a5068;
           font-size: 13px;
-          color: #5a6080;
-          margin: 0;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 10px;
+        }
+        .ms-empty span { font-size: 32px; }
+        .ms-empty p { margin: 0; line-height: 1.6; }
+        .ms-link {
+          background: none; border: none;
+          color: #81b29a; cursor: pointer;
+          font-family: inherit; font-size: inherit;
+          padding: 0; text-decoration: underline;
+          text-underline-offset: 2px;
         }
 
-        /* Two-column layout: projected sales left, summary right */
-        .sum-layout {
-          display: grid;
-          grid-template-columns: minmax(0, 1fr) minmax(280px, 1fr);
-          gap: 20px;
-          align-items: start;
-        }
-
-        /* ── PROJECTED SALES PANEL ── */
-        .proj-panel {
+        /* Month card list */
+        .ms-months { display: flex; flex-direction: column; gap: 8px; }
+        .ms-card {
           background: #161924;
           border: 1px solid #1e2130;
           border-radius: 12px;
-          padding: 20px;
-          display: flex;
-          flex-direction: column;
-          gap: 16px;
-        }
-        .proj-heading { display: flex; flex-direction: column; gap: 3px; }
-        .proj-title {
-          font-size: 11px;
-          font-weight: 700;
-          color: #81b29a;
-          text-transform: uppercase;
-          letter-spacing: 0.9px;
-          margin: 0;
-        }
-        .proj-desc { font-size: 12px; color: #5a6080; margin: 0; }
-
-        .proj-fields {
-          display: flex;
-          flex-direction: column;
-          gap: 12px;
-        }
-        .proj-field { display: flex; flex-direction: column; gap: 6px; }
-        .proj-label {
-          font-size: 12px;
-          color: #b0b8cc;
-          font-weight: 500;
-        }
-        .proj-input-wrap {
-          display: flex;
-          align-items: stretch;
-          background: #252b42;
-          border: 1.5px solid #5060a0;
-          border-radius: 8px;
           overflow: hidden;
-          transition: border-color 0.15s, box-shadow 0.15s;
+          transition: border-color 0.15s;
         }
-        .proj-input-wrap:focus-within {
-          border-color: #81b29a;
-          box-shadow: 0 0 0 3px rgba(129, 178, 154, 0.18);
-        }
-        .proj-prefix, .proj-suffix {
-          padding: 0 10px;
-          font-size: 12px;
-          font-weight: 600;
-          color: #a0a8c0;
-          white-space: nowrap;
-          background: #1e2340;
+
+        /* Card header button */
+        .ms-card-head {
+          width: 100%;
+          min-width: 0;
+          background: none;
+          border: none;
+          padding: 16px 20px;
           display: flex;
           align-items: center;
-          user-select: none;
-          flex-shrink: 0;
-        }
-        .proj-prefix { border-right: 1.5px solid #5060a0; }
-        .proj-suffix { border-left: 1.5px solid #5060a0; }
-        .proj-input {
-          flex: 1;
-          min-width: 0;
-          padding: 10px 12px;
-          background: transparent;
-          border: none;
-          color: #e8e3d9;
-          font-size: 14px;
-          font-weight: 500;
+          justify-content: space-between;
+          gap: 16px;
+          cursor: pointer;
           font-family: inherit;
-          outline: none;
+          text-align: left;
+          transition: background 0.15s;
+          flex-wrap: wrap;
+          box-sizing: border-box;
         }
-        .proj-input-bare { padding-left: 12px; }
-        .proj-input::placeholder { color: #606888; }
-        .proj-hint { font-size: 11px; color: #4a5068; margin: 0; }
+        .ms-card-head:hover { background: #1c2138; }
+        .ms-head-left { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-width: 0; }
+        .ms-month-name { font-size: 16px; font-weight: 700; color: #e8e3d9; white-space: nowrap; }
+        .ms-badge {
+          padding: 2px 10px;
+          border-radius: 20px;
+          font-size: 11px;
+          font-weight: 600;
+          border: 1px solid;
+          white-space: nowrap;
+        }
+        .ms-bk-count { font-size: 12px; color: #4a5068; white-space: nowrap; }
 
-        .proj-discount-note {
+        .ms-head-right { display: flex; align-items: center; gap: 14px; flex-shrink: 0; min-width: 0; }
+        .ms-head-nums { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-width: 0; }
+        .ms-head-col { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; min-width: 0; }
+        .ms-head-col-label { font-size: 10px; color: #5a6080; text-transform: uppercase; letter-spacing: 0.7px; white-space: nowrap; }
+        .ms-head-col-val { font-size: 14px; font-weight: 700; color: #e8e3d9; white-space: nowrap; overflow-wrap: anywhere; }
+        .ms-head-div { width: 1px; height: 32px; background: #2a3050; flex-shrink: 0; }
+        .ms-chevron { font-size: 9px; color: #4a5068; flex-shrink: 0; }
+
+        /* Card body */
+        .ms-card-body {
+          padding: 0 20px 20px;
+          border-top: 1px solid #1e2130;
+        }
+        .ms-sec-label {
+          font-size: 10px;
+          font-weight: 700;
+          color: #4a5068;
+          text-transform: uppercase;
+          letter-spacing: 0.8px;
+          padding: 14px 0 8px;
+          margin: 0;
+        }
+        .ms-block { display: flex; flex-direction: column; gap: 7px; }
+        .ms-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          font-size: 13px;
+          color: #8a9080;
+          gap: 8px;
+        }
+        .ms-row-name { flex: 1; }
+        .ms-row-meta { color: #4a5068; font-size: 11px; font-weight: 400; }
+        .ms-row-val { white-space: nowrap; font-weight: 600; }
+        .ms-row-sub {
+          font-weight: 700;
+          color: #c8c3b8;
+          border-top: 1px dashed #2a3050;
+          padding-top: 6px;
+          margin-top: 2px;
+        }
+        .ms-row-pending { color: #5a6080; font-style: italic; }
+        .ms-empty-row { font-size: 12px; color: #4a5068; font-style: italic; padding: 4px 0; }
+
+        .ms-divider { border-top: 1px solid #1e2130; margin: 10px 0; }
+        .ms-divider-thick { border-color: #2a3050; border-top-width: 2px; }
+
+        .ms-discount-note {
           font-size: 12px;
           color: #f2cc8f;
           background: #1a1a0f;
           border: 1px solid #f2cc8f22;
           border-radius: 7px;
           padding: 8px 12px;
-        }
-        .proj-notice {
-          font-size: 12px;
-          color: #5a6080;
-          background: #111520;
-          border: 1px dashed #2a3050;
-          border-radius: 8px;
-          padding: 10px 14px;
+          margin-top: 6px;
           line-height: 1.5;
         }
-        .proj-link {
-          background: none;
-          border: none;
-          color: #81b29a;
-          cursor: pointer;
-          font-family: inherit;
-          font-size: inherit;
-          padding: 0;
-          text-decoration: underline;
-          text-underline-offset: 2px;
-        }
-        .proj-link:hover { color: #a0d0b5; }
 
-        /* ── FINANCIAL SUMMARY PANEL ── */
-        .fin-summary-panel {
-          display: flex;
-          flex-direction: column;
-          gap: 14px;
-        }
-
-        /* Break-even hero */
-        .bev-hero {
-          background: #161924;
-          border: 1px solid #1e2130;
-          border-radius: 12px;
-          padding: 22px 20px;
-          display: flex;
-          flex-direction: column;
-          gap: 5px;
-        }
-        .bev-hero.bev-profit { border-color: #81b29a44; background: #0f1a16; }
-        .bev-hero.bev-loss  { border-color: #e07a5f44; background: #1a100f; }
-        .bev-label {
-          font-size: 11px;
-          font-weight: 700;
-          text-transform: uppercase;
-          letter-spacing: 0.9px;
-          color: #5a6080;
-        }
-        .bev-value {
-          font-size: 48px;
-          font-weight: 800;
-          line-height: 1;
-          color: #e8e3d9;
-        }
-        .bev-hero.bev-profit .bev-value { color: #81b29a; }
-        .bev-hero.bev-loss  .bev-value { color: #e07a5f; }
-        .bev-sub { font-size: 12px; color: #5a6080; line-height: 1.5; }
-
-        /* P&L card */
-        .pnl-card {
-          background: #161924;
-          border: 1px solid #1e2130;
-          border-radius: 12px;
-          padding: 18px;
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-        }
-        .pnl-card-title {
-          font-size: 11px;
-          font-weight: 700;
-          color: #c8c3b8;
-          text-transform: uppercase;
-          letter-spacing: 0.9px;
-          margin: 0 0 4px;
-        }
-        .pnl-row {
+        .ms-net-row {
           display: flex;
           justify-content: space-between;
-          font-size: 13px;
-          color: #8a9080;
+          align-items: center;
+          gap: 16px;
+          padding: 8px 0 2px;
         }
-        .pnl-total {
-          font-weight: 700;
-          font-size: 15px;
-          color: #e8e3d9;
-        }
-        .pnl-divider { border-top: 1px solid #2a3050; margin: 2px 0; }
-        .pos { color: #81b29a; }
-        .neg { color: #e07a5f; }
+        .ms-net-label { font-size: 14px; font-weight: 700; color: #e8e3d9; }
+        .ms-net-val { font-size: 26px; font-weight: 800; white-space: nowrap; }
+        .ms-hint { font-size: 12px; margin: 4px 0 0; line-height: 1.5; }
+        .ms-hint-green { color: #5a7060; }
+        .ms-hint-red   { color: #905050; }
 
-        /* Snap cards */
-        .sum-snap-grid {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 10px;
-        }
-        .sum-snap {
-          background: #161924;
-          border: 1px solid #1e2130;
-          border-radius: 10px;
-          padding: 14px;
-          display: flex;
-          flex-direction: column;
-          gap: 4px;
-        }
-        .sum-snap-label {
-          font-size: 10px;
-          color: #5a6080;
-          text-transform: uppercase;
-          letter-spacing: 0.8px;
-        }
-        .sum-snap-value {
-          font-size: 16px;
-          font-weight: 700;
-          color: #e8e3d9;
-        }
+        /* Colour utilities */
+        .ms-green { color: #81b29a; }
+        .ms-red   { color: #e07a5f; }
+        .ms-amber { color: #f2cc8f; }
 
-        @media (max-width: 900px) {
-          .sum-layout { grid-template-columns: 1fr; }
-          .fin-summary-panel { order: -1; }
-        }
-        @media (max-width: 600px) {
-          .sum-title { font-size: 18px; }
-          .bev-value { font-size: 36px; }
-          .bev-hero { padding: 16px; }
-          .sum-snap-grid { grid-template-columns: 1fr 1fr; }
-          .proj-panel { padding: 16px; }
-          .pnl-card { padding: 14px; }
+        /* Responsive */
+        @media (max-width: 700px) {
+          .ms-card-head { flex-direction: column; align-items: stretch; }
+          .ms-head-right { justify-content: space-between; }
+          .ms-head-nums { gap: 6px; }
+          .ms-head-col-val { font-size: 13px; }
+          .ms-net-val { font-size: 20px; }
+          .ms-month-name { font-size: 14px; }
+          .ms-card-body { padding: 0 14px 16px; }
         }
       `}</style>
     </div>

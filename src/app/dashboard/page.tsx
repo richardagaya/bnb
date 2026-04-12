@@ -5,78 +5,104 @@ import { useRouter } from "next/navigation";
 import ListingsSidebar, { Listing } from "../components/ListingsSidebar";
 import ListingDashboard from "../components/ListingDashboard";
 import { useAuth } from "@/contexts/AuthContext";
-
-const DEMO_LISTINGS: Listing[] = [
-  {
-    id: "1",
-    name: "Downtown Loft",
-    address: "42 Oak Street, Nairobi",
-    type: "Apartment",
-    color: "#E07A5F",
-  },
-];
-
-/** Safely read a JSON value from localStorage, returning fallback on any error. */
-function fromStorage<T>(key: string, fallback: T): T {
-  try {
-    if (typeof window === "undefined") return fallback;
-    const raw = localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T) : fallback;
-  } catch {
-    return fallback;
-  }
-}
+import {
+  getListings,
+  addListing as fsAddListing,
+  updateListing as fsUpdateListing,
+  deleteListing as fsDeleteListing,
+} from "@/lib/firestore";
 
 export default function DashboardPage() {
   const { user, signOut } = useAuth();
   const router = useRouter();
 
-  // ── Persisted state ──
-  const [listings, setListings] = useState<Listing[]>(() =>
-    fromStorage("bnb_listings", DEMO_LISTINGS)
-  );
-  const [activeListing, setActiveListing] = useState<string | null>(() =>
-    fromStorage("bnb_active", DEMO_LISTINGS[0]?.id ?? null)
-  );
+  const [listings, setListings] = useState<Listing[]>([]);
+  const [activeListing, setActiveListing] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [loadingListings, setLoadingListings] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Save to localStorage whenever listings or active selection changes
+  // ── Load listings from Firestore whenever the signed-in user changes ───────
   useEffect(() => {
-    localStorage.setItem("bnb_listings", JSON.stringify(listings));
-  }, [listings]);
+    if (!user?.uid) return;
 
-  useEffect(() => {
-    localStorage.setItem("bnb_active", JSON.stringify(activeListing));
-  }, [activeListing]);
+    let cancelled = false;
+    setLoadingListings(true);
+    setErrorMsg(null);
 
-  const addListing = (listing: Omit<Listing, "id">) => {
-    const newListing = { ...listing, id: Date.now().toString() };
-    setListings((prev) => [...prev, newListing]);
-    setActiveListing(newListing.id);
-    setSidebarOpen(false);
+    getListings(user.uid)
+      .then((data) => {
+        if (cancelled) return;
+        setListings(data);
+        // Pick the first listing as active only if nothing is selected yet
+        setActiveListing((prev) => prev ?? (data[0]?.id ?? null));
+      })
+      .catch((err) => {
+        console.error("Failed to load listings:", err);
+        if (!cancelled) {
+          const msg = (err as { code?: string }).code === "permission-denied"
+            ? "Permission denied — check your Firestore security rules."
+            : `Failed to load properties: ${(err as Error).message}`;
+          setErrorMsg(msg);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingListings(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [user?.uid]);
+
+  // ── CRUD ──────────────────────────────────────────────────────────────────
+
+  const addListing = async (listing: Omit<Listing, "id">) => {
+    if (!user) return;
+    try {
+      setErrorMsg(null);
+      const id = await fsAddListing(user.uid, listing);
+      const newListing: Listing = { ...listing, id };
+      setListings((prev) => [...prev, newListing]);
+      setActiveListing(id);
+      setSidebarOpen(false);
+    } catch (err) {
+      console.error("Failed to add listing:", err);
+      const msg = (err as { code?: string }).code === "permission-denied"
+        ? "Permission denied — your Firestore rules are blocking writes. See setup instructions."
+        : `Failed to save property: ${(err as Error).message}`;
+      setErrorMsg(msg);
+    }
   };
 
-  const updateListing = (id: string, updates: Partial<Omit<Listing, "id">>) => {
-    setListings((prev) =>
-      prev.map((l) => (l.id === id ? { ...l, ...updates } : l))
-    );
+  const updateListing = async (id: string, updates: Partial<Omit<Listing, "id">>) => {
+    if (!user) return;
+    try {
+      await fsUpdateListing(user.uid, id, updates);
+      setListings((prev) =>
+        prev.map((l) => (l.id === id ? { ...l, ...updates } : l))
+      );
+    } catch (err) {
+      console.error("Failed to update listing:", err);
+      setErrorMsg(`Failed to update property: ${(err as Error).message}`);
+    }
   };
 
-  const deleteListing = (id: string) => {
-    // Remove listing-specific data from storage
-    localStorage.removeItem(`bnb_fin_${id}`);
-    localStorage.removeItem(`bnb_exp_${id}`);
-    localStorage.removeItem(`bnb_cal_${id}`);
-
-    setListings((prev) => {
-      const remaining = prev.filter((l) => l.id !== id);
-      setActiveListing(remaining.length > 0 ? remaining[0].id : null);
-      return remaining;
-    });
+  const deleteListing = async (id: string) => {
+    if (!user) return;
+    try {
+      await fsDeleteListing(user.uid, id);
+      setListings((prev) => {
+        const remaining = prev.filter((l) => l.id !== id);
+        setActiveListing(remaining.length > 0 ? remaining[0].id : null);
+        return remaining;
+      });
+    } catch (err) {
+      console.error("Failed to delete listing:", err);
+      setErrorMsg(`Failed to delete property: ${(err as Error).message}`);
+    }
   };
 
-  const handleSignOut = () => {
-    signOut();
+  const handleSignOut = async () => {
+    await signOut();
     router.push("/");
   };
 
@@ -86,7 +112,6 @@ export default function DashboardPage() {
 
   return (
     <div className="app-root">
-      {/* Mobile backdrop — tap to close sidebar */}
       {sidebarOpen && (
         <div
           className="sidebar-backdrop"
@@ -110,7 +135,19 @@ export default function DashboardPage() {
       />
 
       <main className="app-main">
-        {currentListing ? (
+        {errorMsg && (
+          <div className="error-banner">
+            <span>⚠ {errorMsg}</span>
+            <button onClick={() => setErrorMsg(null)}>✕</button>
+          </div>
+        )}
+        {loadingListings ? (
+          <div className="no-listing">
+            <div className="no-listing-content">
+              <p style={{ color: "#4a5068", fontSize: 14 }}>Loading your properties…</p>
+            </div>
+          </div>
+        ) : currentListing ? (
           <ListingDashboard
             key={currentListing.id}
             listing={currentListing}
@@ -128,7 +165,7 @@ export default function DashboardPage() {
               ☰
             </button>
             <div className="no-listing-content">
-              <span className="no-listing-icon">⌂</span>
+              <span className="no-listing-icon">🏠</span>
               <h2>Welcome to HostLedger</h2>
               <p>
                 Add your first property from the sidebar to start tracking
@@ -153,6 +190,8 @@ export default function DashboardPage() {
         body {
           height: 100%;
           background: #0c0e14;
+          overflow-x: hidden;
+          max-width: 100%;
         }
 
         .app-root {
@@ -161,15 +200,43 @@ export default function DashboardPage() {
           background: #0c0e14;
           font-family: "DM Sans", sans-serif;
           color: #e8e3d9;
+          max-width: 100%;
+          overflow-x: hidden;
         }
         .app-main {
           margin-left: 260px;
           flex: 1;
           background: #0c0e14;
           min-height: 100vh;
+          min-width: 0;
+          max-width: calc(100% - 260px);
+          overflow-x: hidden;
         }
 
-        /* ── NO LISTING STATE ── */
+        /* ── ERROR BANNER ── */
+        .error-banner {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          background: #3a1a1a;
+          border: 1px solid #7a2a2a;
+          border-radius: 8px;
+          color: #f08080;
+          font-size: 13px;
+          padding: 12px 16px;
+          margin: 16px 24px 0;
+        }
+        .error-banner button {
+          background: none;
+          border: none;
+          color: #f08080;
+          cursor: pointer;
+          font-size: 14px;
+          flex-shrink: 0;
+        }
+
+        /* ── NO LISTING / LOADING STATE ── */
         .no-listing {
           display: flex;
           align-items: center;
@@ -197,7 +264,6 @@ export default function DashboardPage() {
           line-height: 1.6;
         }
 
-        /* Hamburger button in no-listing view (mobile only) */
         .nl-menu-btn {
           display: none;
           position: absolute;
@@ -215,7 +281,6 @@ export default function DashboardPage() {
           cursor: pointer;
         }
 
-        /* Sidebar backdrop */
         .sidebar-backdrop {
           position: fixed;
           inset: 0;
@@ -225,17 +290,16 @@ export default function DashboardPage() {
           -webkit-backdrop-filter: blur(2px);
         }
 
-        /* ── MOBILE: collapse sidebar ── */
         @media (max-width: 767px) {
           .app-main {
             margin-left: 0;
+            max-width: 100%;
           }
           .nl-menu-btn {
             display: flex;
           }
         }
 
-        /* ── NUMBER INPUT: hide spinners ── */
         input[type="number"]::-webkit-outer-spin-button,
         input[type="number"]::-webkit-inner-spin-button {
           -webkit-appearance: none;
@@ -245,7 +309,6 @@ export default function DashboardPage() {
           -moz-appearance: textfield;
         }
 
-        /* ── SCROLLBAR ── */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: #0f1117; }
         ::-webkit-scrollbar-thumb { background: #2a3050; border-radius: 3px; }

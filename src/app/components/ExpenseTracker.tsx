@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import DatePicker from "./DatePicker";
 
 export interface Expense {
   id: string;
@@ -48,11 +49,26 @@ function formatCurrency(amount: number) {
   }).format(amount)}`;
 }
 
+function monthKey(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+function monthLabel(key: string) {
+  const [y, m] = key.split("-").map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
+}
+function shiftMonth(key: string, delta: number) {
+  const [y, m] = key.split("-").map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  return monthKey(d);
+}
+
 export default function ExpenseTracker({
   expenses,
   onAddExpense,
   onDeleteExpense,
 }: ExpenseTrackerProps) {
+  const currentMonthKey = monthKey(new Date());
+  const [selectedMonth, setSelectedMonth] = useState(currentMonthKey);
   const [showForm, setShowForm] = useState(false);
   const [filter, setFilter] = useState("All");
   const [sortBy, setSortBy] = useState<"date" | "amount">("date");
@@ -79,7 +95,10 @@ export default function ExpenseTracker({
     setShowForm(false);
   };
 
-  const filtered = expenses
+  // Expenses for the selected month only
+  const monthExpenses = expenses.filter((e) => e.date.startsWith(selectedMonth));
+
+  const filtered = monthExpenses
     .filter((e) => filter === "All" || e.category === filter)
     .sort((a, b) =>
       sortBy === "date"
@@ -89,11 +108,14 @@ export default function ExpenseTracker({
 
   const totalByCategory = CATEGORIES.map((cat) => ({
     ...cat,
-    total: expenses.filter((e) => e.category === cat.name).reduce((s, e) => s + e.amount, 0),
+    total: monthExpenses.filter((e) => e.category === cat.name).reduce((s, e) => s + e.amount, 0),
   })).filter((c) => c.total > 0).sort((a, b) => b.total - a.total);
 
-  const grandTotal = expenses.reduce((s, e) => s + e.amount, 0);
-  const recurringTotal = expenses.filter((e) => e.recurring).reduce((s, e) => s + e.amount, 0);
+  const grandTotal    = monthExpenses.reduce((s, e) => s + e.amount, 0);
+  const recurringTotal = monthExpenses.filter((e) => e.recurring).reduce((s, e) => s + e.amount, 0);
+
+  // Months that have expenses (for the "has data" dot indicator)
+  const monthsWithData = new Set(expenses.map((e) => e.date.slice(0, 7)));
 
   return (
     <div className="expense-tracker">
@@ -107,23 +129,48 @@ export default function ExpenseTracker({
         </button>
       </div>
 
+      {/* Month navigator */}
+      <div className="month-nav">
+        <button
+          className="month-nav-btn"
+          onClick={() => setSelectedMonth(shiftMonth(selectedMonth, -1))}
+        >
+          ‹
+        </button>
+        <div className="month-nav-center">
+          <span className="month-nav-label">{monthLabel(selectedMonth)}</span>
+          {selectedMonth !== currentMonthKey && (
+            <button className="month-nav-today" onClick={() => setSelectedMonth(currentMonthKey)}>
+              Back to current
+            </button>
+          )}
+        </div>
+        <button
+          className="month-nav-btn"
+          onClick={() => setSelectedMonth(shiftMonth(selectedMonth, 1))}
+          disabled={selectedMonth >= currentMonthKey}
+        >
+          ›
+        </button>
+      </div>
+
       {/* Summary Row */}
       <div className="summary-row">
         <div className="summary-card">
-          <span className="summary-label">Total Logged</span>
+          <span className="summary-label">Total This Month</span>
           <span className="summary-value">{formatCurrency(grandTotal)}</span>
         </div>
         <div className="summary-card">
-          <span className="summary-label">Recurring Monthly</span>
+          <span className="summary-label">Recurring</span>
           <span className="summary-value recurring">{formatCurrency(recurringTotal)}</span>
         </div>
         <div className="summary-card">
-          <span className="summary-label">One-time Costs</span>
+          <span className="summary-label">One-time</span>
           <span className="summary-value">{formatCurrency(grandTotal - recurringTotal)}</span>
         </div>
         <div className="summary-card">
           <span className="summary-label">Entries</span>
-          <span className="summary-value">{expenses.length}</span>
+          <span className="summary-value">{monthExpenses.length}</span>
         </div>
       </div>
 
@@ -160,11 +207,10 @@ export default function ExpenseTracker({
           <div className="form-grid">
             <div className="form-group">
               <label className="form-label">Date</label>
-              <input
-                type="date"
-                className="form-input"
+              <DatePicker
                 value={form.date}
-                onChange={(e) => setForm({ ...form, date: e.target.value })}
+                placeholder="Select date"
+                onChange={(v) => setForm({ ...form, date: v })}
               />
             </div>
             <div className="form-group">
@@ -261,7 +307,21 @@ export default function ExpenseTracker({
         {filtered.length === 0 ? (
           <div className="empty-expenses">
             <span>📊</span>
-            <p>No expenses logged yet. Start tracking your costs to understand your true profitability.</p>
+            <p>
+              {monthExpenses.length === 0
+                ? `No expenses logged for ${monthLabel(selectedMonth)}.`
+                : `No expenses match the "${filter}" filter.`}
+            </p>
+            {!monthsWithData.has(selectedMonth) && expenses.length > 0 && (
+              <p className="exp-other-months">
+                Months with data:{" "}
+                {[...monthsWithData].sort((a, b) => b.localeCompare(a)).map((k) => (
+                  <button key={k} className="exp-month-chip" onClick={() => setSelectedMonth(k)}>
+                    {monthLabel(k)}
+                  </button>
+                ))}
+              </p>
+            )}
           </div>
         ) : (
           filtered.map((expense) => {
@@ -287,7 +347,7 @@ export default function ExpenseTracker({
       </div>
 
       <style jsx>{`
-        .expense-tracker { display: flex; flex-direction: column; gap: 20px; }
+        .expense-tracker { display: flex; flex-direction: column; gap: 20px; min-width: 0; max-width: 100%; overflow-x: hidden; }
         .tracker-header { display: flex; justify-content: space-between; align-items: flex-start; }
         .section-title { font-size: 22px; font-weight: 700; color: #e8e3d9; margin: 0 0 6px; }
         .section-desc { font-size: 13px; color: #5a6080; margin: 0; }
@@ -297,7 +357,7 @@ export default function ExpenseTracker({
         .summary-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
         .summary-card { background: #161924; border: 1px solid #1e2130; border-radius: 10px; padding: 14px 16px; }
         .summary-label { display: block; font-size: 11px; color: #5a6080; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
-        .summary-value { font-size: 20px; font-weight: 700; color: #e8e3d9; }
+        .summary-value { font-size: 20px; font-weight: 700; color: #e8e3d9; overflow-wrap: anywhere; word-break: break-word; }
         .summary-value.recurring { color: #F2CC8F; }
 
         .category-breakdown { background: #161924; border: 1px solid #1e2130; border-radius: 10px; padding: 16px; }
@@ -331,8 +391,58 @@ export default function ExpenseTracker({
         .sort-select { padding: 7px 12px; background: #161924; border: 1px solid #2a3050; border-radius: 7px; color: #5a6080; font-size: 12px; font-family: inherit; outline: none; cursor: pointer; }
 
         .expenses-list { display: flex; flex-direction: column; gap: 6px; }
+        /* Month navigator */
+        .month-nav {
+          display: flex;
+          align-items: center;
+          gap: 0;
+          background: #161924;
+          border: 1px solid #1e2130;
+          border-radius: 10px;
+          overflow: hidden;
+        }
+        .month-nav-btn {
+          background: none;
+          border: none;
+          color: #8a9080;
+          font-size: 22px;
+          line-height: 1;
+          padding: 10px 18px;
+          cursor: pointer;
+          font-family: inherit;
+          transition: background 0.15s, color 0.15s;
+          flex-shrink: 0;
+        }
+        .month-nav-btn:hover:not(:disabled) { background: #1c2138; color: #e8e3d9; }
+        .month-nav-btn:disabled { opacity: 0.3; cursor: default; }
+        .month-nav-center {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 3px;
+          border-left: 1px solid #1e2130;
+          border-right: 1px solid #1e2130;
+          padding: 10px 12px;
+        }
+        .month-nav-label { font-size: 15px; font-weight: 700; color: #e8e3d9; }
+        .month-nav-today {
+          background: none;
+          border: none;
+          color: #81b29a;
+          font-size: 11px;
+          cursor: pointer;
+          font-family: inherit;
+          padding: 0;
+          text-decoration: underline;
+          text-underline-offset: 2px;
+        }
+
         .empty-expenses { background: #161924; border: 1px dashed #2a3050; border-radius: 10px; padding: 32px; text-align: center; color: #4a5068; font-size: 13px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
         .empty-expenses span { font-size: 28px; }
+        .exp-other-months { font-size: 11px; color: #4a5068; margin: 0; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: center; }
+        .exp-month-chip { background: #1c2138; border: 1px solid #2a3050; border-radius: 6px; color: #81b29a; font-size: 11px; padding: 2px 8px; cursor: pointer; font-family: inherit; transition: background 0.15s; }
+        .exp-month-chip:hover { background: #243050; }
         .expense-row { background: #161924; border: 1px solid #1e2130; border-radius: 9px; padding: 12px 16px; display: flex; align-items: center; gap: 12px; transition: border-color 0.15s; }
         .expense-row:hover { border-color: #2a3050; }
         .expense-cat-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
@@ -360,16 +470,21 @@ export default function ExpenseTracker({
           }
           .btn-primary { width: 100%; text-align: center; padding: 12px; }
           .summary-row { grid-template-columns: 1fr 1fr; gap: 8px; }
-          .summary-value { font-size: 16px; }
+          .summary-card { padding: 10px 12px; }
+          .summary-value { font-size: 14px; }
           .add-form-card { padding: 16px; }
           .form-actions { flex-direction: column-reverse; }
           .btn-secondary { width: 100%; text-align: center; }
-          .expense-row { padding: 10px 12px; gap: 10px; }
+          .expense-row { padding: 10px 12px; gap: 8px; }
           .expense-desc { font-size: 13px; }
           .expense-amount { font-size: 13px; }
           .list-controls { flex-direction: column; align-items: stretch; gap: 8px; }
           .sort-select { width: 100%; }
           .section-title { font-size: 18px; }
+        }
+        @media (max-width: 360px) {
+          .summary-value { font-size: 13px; }
+          .summary-label { font-size: 9px; }
         }
       `}</style>
     </div>

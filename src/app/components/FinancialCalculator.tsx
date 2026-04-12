@@ -75,6 +75,11 @@ export default function FinancialCalculator({ data, onChange }: FinancialCalcula
     [draft]
   );
 
+  const platformFeeAmt = draft.chargePerStay * (draft.discountPercent / 100);
+  const netPerStay = draft.chargePerStay - platformFeeAmt;
+  const projectedMonthlyRevenue = netPerStay * draft.projectedStaysPerMonth;
+  const projectedMonthlyProfit = projectedMonthlyRevenue - totalMonthlyExpenses;
+
   return (
     <div className="financial-calc">
       {/* ── HEADER ── */}
@@ -82,8 +87,8 @@ export default function FinancialCalculator({ data, onChange }: FinancialCalcula
         <div>
           <h2 className="section-title">Finance Setup</h2>
           <p className="section-desc">
-            Enter your one-time setup costs and monthly expenses, then tap Save.
-            Head to the <strong>Summary</strong> tab to set projected sales and view your P&amp;L.
+            Set your pricing, setup costs, and monthly expenses. The{" "}
+            <strong>Summary</strong> tab uses these numbers to calculate your P&amp;L automatically.
           </p>
         </div>
         <button className={`save-btn ${saved ? "saved" : ""}`} onClick={handleSave}>
@@ -92,6 +97,110 @@ export default function FinancialCalculator({ data, onChange }: FinancialCalcula
       </div>
 
       <div className="input-sections">
+
+        {/* ── Pricing Per Stay ── */}
+        <section className="input-group pricing-group">
+          <div className="group-heading">
+            <h3 className="group-title">Pricing Per Stay</h3>
+            <p className="group-desc">
+              Your listed charge per booking and any platform fee deducted by Airbnb, Booking.com, etc.
+              Individual guest discounts are tracked per booking in the Bookings tab.
+            </p>
+          </div>
+
+          <div className="pricing-layout">
+            <div className="pricing-inputs">
+              {/* Charge per stay */}
+              <div className="field">
+                <label className="field-label">Price Per Stay</label>
+                <div className="input-wrap">
+                  <span className="prefix">KSh</span>
+                  <input
+                    type="number"
+                    min="0"
+                    className="field-input"
+                    value={draft.chargePerStay === 0 ? "" : draft.chargePerStay}
+                    placeholder="0"
+                    onChange={(e) => update("chargePerStay", e.target.value)}
+                  />
+                </div>
+                <p className="field-hint">The full amount you charge a guest per booking</p>
+              </div>
+
+              {/* Platform fee */}
+              <div className="field">
+                <label className="field-label">Platform Fee</label>
+                <div className="input-wrap suffix-wrap">
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    className="field-input"
+                    value={draft.discountPercent === 0 ? "" : draft.discountPercent}
+                    placeholder="0"
+                    onChange={(e) => update("discountPercent", e.target.value)}
+                  />
+                  <span className="suffix">%</span>
+                </div>
+                <p className="field-hint">e.g. Airbnb service fee 3%, Booking.com 15%</p>
+              </div>
+
+              {/* Projected stays */}
+              <div className="field">
+                <label className="field-label">Projected Stays / Month</label>
+                <div className="input-wrap">
+                  <input
+                    type="number"
+                    min="0"
+                    className="field-input"
+                    style={{ paddingLeft: 12 }}
+                    value={draft.projectedStaysPerMonth === 0 ? "" : draft.projectedStaysPerMonth}
+                    placeholder="0"
+                    onChange={(e) => update("projectedStaysPerMonth", e.target.value)}
+                  />
+                </div>
+                <p className="field-hint">How many bookings you expect per month</p>
+              </div>
+            </div>
+
+            {/* Live preview panel */}
+            <div className="pricing-preview">
+              <div className="preview-row">
+                <span className="preview-label">Price per stay</span>
+                <span className="preview-val">{currency(draft.chargePerStay)}</span>
+              </div>
+              {draft.discountPercent > 0 && (
+                <div className="preview-row preview-deduct">
+                  <span className="preview-label">Platform fee ({draft.discountPercent}%)</span>
+                  <span className="preview-val preview-neg">− {currency(platformFeeAmt)}</span>
+                </div>
+              )}
+              <div className="preview-divider" />
+              <div className="preview-row preview-net">
+                <span className="preview-label">You receive / stay</span>
+                <span className="preview-val preview-pos">{currency(netPerStay)}</span>
+              </div>
+              <div className="preview-row">
+                <span className="preview-label">× {draft.projectedStaysPerMonth} stays/mo</span>
+                <span className="preview-val">{currency(projectedMonthlyRevenue)}</span>
+              </div>
+              <div className="preview-divider" />
+              <div className="preview-row preview-profit">
+                <span className="preview-label">Projected profit/mo</span>
+                <span
+                  className="preview-val"
+                  style={{ color: projectedMonthlyProfit >= 0 ? "#81b29a" : "#e07a5f" }}
+                >
+                  {currency(projectedMonthlyProfit)}
+                </span>
+              </div>
+              <p className="preview-note">
+                After fixed costs · discounts per guest tracked in Bookings
+              </p>
+            </div>
+          </div>
+        </section>
+
         {/* ── Initial Setup Capital ── */}
         <section className="input-group">
           <div className="group-heading">
@@ -200,6 +309,70 @@ export default function FinancialCalculator({ data, onChange }: FinancialCalcula
         .save-btn:hover { background: #6fa085; }
         .save-btn:active { transform: scale(0.97); }
         .save-btn.saved { background: #4a8060; color: #c8f0dc; }
+
+        /* ── PRICING SECTION ── */
+        .pricing-group { border-color: #81b29a33; }
+        .pricing-layout {
+          display: grid;
+          grid-template-columns: 1fr auto;
+          gap: 20px;
+          align-items: start;
+        }
+        .pricing-inputs {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+          gap: 12px;
+        }
+        .suffix-wrap { }
+        .suffix {
+          padding: 0 12px;
+          font-size: 12px;
+          font-weight: 600;
+          color: #a0a8c0;
+          white-space: nowrap;
+          background: #1e2340;
+          display: flex;
+          align-items: center;
+          user-select: none;
+          border-left: 1.5px solid #5060a0;
+          flex-shrink: 0;
+        }
+
+        /* Live preview panel */
+        .pricing-preview {
+          background: #0f1117;
+          border: 1px solid #2a3050;
+          border-radius: 10px;
+          padding: 16px 18px;
+          min-width: 210px;
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+        .preview-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 12px;
+          font-size: 13px;
+        }
+        .preview-label { color: #5a6080; white-space: nowrap; }
+        .preview-val { font-weight: 600; color: #e8e3d9; white-space: nowrap; }
+        .preview-pos { color: #81b29a; }
+        .preview-neg { color: #e07a5f; }
+        .preview-deduct .preview-label { color: #4a5068; font-size: 12px; }
+        .preview-deduct .preview-val  { font-size: 12px; }
+        .preview-net .preview-label { color: #c8c3b8; font-weight: 600; }
+        .preview-net .preview-val   { font-size: 15px; }
+        .preview-profit .preview-label { color: #c8c3b8; font-weight: 700; }
+        .preview-profit .preview-val   { font-size: 16px; font-weight: 800; }
+        .preview-divider { border-top: 1px solid #2a3050; margin: 2px 0; }
+        .preview-note { font-size: 11px; color: #3a4060; margin: 4px 0 0; line-height: 1.4; }
+
+        @media (max-width: 800px) {
+          .pricing-layout { grid-template-columns: 1fr; }
+          .pricing-preview { min-width: unset; }
+        }
 
         /* ── INPUT SECTIONS ── */
         .input-sections {

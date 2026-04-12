@@ -2,1310 +2,1597 @@
 
 import { useState, useEffect, useRef } from "react";
 
-export default function LandingPage() {
-  const [scrolled, setScrolled] = useState(false);
-  const [activeFeature, setActiveFeature] = useState(0);
-  const heroRef = useRef<HTMLDivElement>(null);
-
+/* ── Scroll-reveal hook ─────────────────────────────────────────────────── */
+function useReveal() {
+  const ref = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 40);
-    window.addEventListener("scroll", onScroll);
-    return () => window.removeEventListener("scroll", onScroll);
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { setVisible(true); obs.disconnect(); } },
+      { threshold: 0.12 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+  return { ref, visible };
+}
+
+/* ── Animated counter ──────────────────────────────────────────────────── */
+function Counter({ to, prefix = "", suffix = "", duration = 1800 }: {
+  to: number; prefix?: string; suffix?: string; duration?: number;
+}) {
+  const [val, setVal] = useState(0);
+  const { ref, visible } = useReveal();
+  useEffect(() => {
+    if (!visible) return;
+    const start = performance.now();
+    const tick = (now: number) => {
+      const t = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - t, 3);
+      setVal(Math.round(eased * to));
+      if (t < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }, [visible, to, duration]);
+  return <span ref={ref}>{prefix}{val.toLocaleString()}{suffix}</span>;
+}
+
+/* ── Main component ────────────────────────────────────────────────────── */
+export default function LandingPage() {
+  const [scrolled, setScrolled]       = useState(false);
+  const [activeFeature, setActiveFeature] = useState(0);
+  const [videoPlaying, setVideoPlaying]   = useState(false);
+  const [activeMonth, setActiveMonth]     = useState(0);
+
+  // Sticky nav
+  useEffect(() => {
+    const fn = () => setScrolled(window.scrollY > 40);
+    window.addEventListener("scroll", fn, { passive: true });
+    return () => window.removeEventListener("scroll", fn);
   }, []);
 
+  // Auto-rotate feature tabs
   useEffect(() => {
-    const t = setInterval(() => {
-      setActiveFeature((n) => (n + 1) % features.length);
-    }, 3200);
+    const t = setInterval(() => setActiveFeature(n => (n + 1) % FEATURES.length), 4000);
     return () => clearInterval(t);
   }, []);
 
+  // Sections for scroll reveal
+  const s1 = useReveal(), s2 = useReveal(), s3 = useReveal(),
+        s4 = useReveal(), s5 = useReveal(), s6 = useReveal();
+
+  const af = FEATURES[activeFeature];
+
   return (
     <>
-      <style>{css}</style>
+      <style>{CSS}</style>
 
-      {/* ── NAV ─────────────────────────────────────────── */}
-      <nav className={scrolled ? "nav nav--stuck" : "nav"}>
-        <a href="/" className="nav__logo">
-          <span className="nav__logo-mark">H</span>
-          HostLedger
+      {/* ── NAV ── */}
+      <nav className={`lp-nav ${scrolled ? "lp-nav--stuck" : ""}`}>
+        <a href="/" className="lp-logo">
+          <span className="lp-logo-mark">H</span>HostLedger
         </a>
-        <ul className="nav__links">
+        <ul className="lp-nav-links">
           <li><a href="#features">Features</a></li>
           <li><a href="#how">How it works</a></li>
-          <li><a href="#pricing">Pricing</a></li>
+          <li><a href="#demo">Demo</a></li>
         </ul>
-        <a href="/login" className="nav__cta">Get started</a>
+        <a href="/login" className="lp-nav-cta">Get started free →</a>
       </nav>
 
-      {/* ── HERO ─────────────────────────────────────────── */}
-      <section className="hero" ref={heroRef}>
-        <div className="hero__bg-grid" aria-hidden />
+      {/* ── HERO ── */}
+      <section className="lp-hero">
+        {/* Ambient blobs */}
+        <div className="blob blob-1" aria-hidden />
+        <div className="blob blob-2" aria-hidden />
+        <div className="blob blob-3" aria-hidden />
+        <div className="lp-grid-overlay" aria-hidden />
 
-        <div className="hero__content">
-          <p className="hero__eyebrow">Short-term rental intelligence</p>
-          <h1 className="hero__headline">
-            Stop guessing.<br />
-            Start knowing.
-          </h1>
-          <p className="hero__sub">
-            One dashboard for every property you own. Track what you earn,
-            what you spend, and exactly how long until you're profitable.
-          </p>
-          <div className="hero__actions">
-            <a href="/login" className="btn btn--primary">
-              Try it free
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </a>
-            <a href="#how" className="btn btn--ghost">See how it works</a>
+        <div className="lp-hero-inner">
+          <div className="lp-hero-left">
+            <div className="lp-eyebrow">
+              <span className="lp-eyebrow-dot" />
+              Short-term rental intelligence
+            </div>
+
+            <h1 className="lp-headline">
+              Your rental is a<br />
+              <em>business.</em><br />
+              Run it like one.
+            </h1>
+
+            <p className="lp-hero-sub">
+              Log bookings, track expenses, sync calendars, and see your exact
+              monthly profit — automatically. Everything in one clean dashboard,
+              for every property you own.
+            </p>
+
+            <div className="lp-hero-actions">
+              <a href="/login" className="lp-btn lp-btn-primary">
+                Start for free
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.6"
+                    strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </a>
+              <a href="#demo" className="lp-btn lp-btn-ghost">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
+                  <circle cx="7" cy="7" r="6.5" stroke="currentColor" strokeWidth="1" fill="none"/>
+                  <path d="M5.5 4.5l4 2.5-4 2.5V4.5z"/>
+                </svg>
+                Watch demo
+              </a>
+            </div>
+
+            {/* Trust badges */}
+            <div className="lp-trust">
+              <div className="lp-avatars">
+                {["#c07a6a","#6a9c80","#c4a45a","#6a7ab8","#9a6a9c"].map((c,i) => (
+                  <span key={i} className="lp-avatar" style={{ background: c }} />
+                ))}
+              </div>
+              <span className="lp-trust-text">2,400+ hosts trust HostLedger</span>
+            </div>
           </div>
 
-          <div className="hero__proof">
-            <div className="hero__avatars">
-              {["#c07a6a","#6a9c80","#c4a45a","#6a7ab8"].map((c, i) => (
-                <span key={i} className="hero__avatar" style={{ background: c, zIndex: 4 - i }} />
-              ))}
+          {/* Dashboard preview */}
+          <div className="lp-hero-right">
+            <div className="lp-mockup">
+              <div className="lp-mockup-bar">
+                <span className="lp-dot lp-dot-r"/><span className="lp-dot lp-dot-y"/>
+                <span className="lp-dot lp-dot-g"/>
+                <span className="lp-mockup-url">hostledger.app/dashboard</span>
+              </div>
+              <div className="lp-mockup-body">
+                {/* Sidebar */}
+                <div className="lp-mock-sidebar">
+                  <p className="lp-mock-brand">⌂ HostLedger</p>
+                  <button className="lp-mock-prop lp-mock-prop-active">Downtown Loft</button>
+                  <button className="lp-mock-prop">Beach Villa</button>
+                  <button className="lp-mock-prop">Studio 4B</button>
+                </div>
+                {/* Main area */}
+                <div className="lp-mock-main">
+                  {/* KPI row */}
+                  <div className="lp-mock-kpis">
+                    {[
+                      { label: "Apr profit", val: "KSh 3,840", color: "#81b29a" },
+                      { label: "Bookings", val: "6", color: "#f2cc8f" },
+                      { label: "Expenses", val: "KSh 2,100", color: "#e07a5f" },
+                    ].map(k => (
+                      <div className="lp-mock-kpi" key={k.label}>
+                        <span className="lp-mock-kpi-label">{k.label}</span>
+                        <span className="lp-mock-kpi-val" style={{ color: k.color }}>{k.val}</span>
+                      </div>
+                    ))}
+                  </div>
+                  {/* Calendar strip */}
+                  <div className="lp-mock-cal">
+                    <p className="lp-mock-sec">April 2025</p>
+                    <div className="lp-mock-days">
+                      {Array.from({ length: 14 }, (_, i) => i + 1).map(d => {
+                        const booked = [3,4,5,6,10,11,12,13,14].includes(d);
+                        return (
+                          <div key={d} className={`lp-mock-day ${booked ? "lp-mock-day-booked" : ""}`}>
+                            {d}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  {/* P&L mini */}
+                  <div className="lp-mock-pnl">
+                    {[
+                      { label: "Rent", val: "-1,800" },
+                      { label: "Utilities", val: "-300" },
+                      { label: "Cleaner", val: "-500" },
+                    ].map(r => (
+                      <div className="lp-mock-pnl-row" key={r.label}>
+                        <span>{r.label}</span>
+                        <span className="lp-mock-pnl-neg">{r.val}</span>
+                      </div>
+                    ))}
+                    <div className="lp-mock-pnl-row lp-mock-pnl-profit">
+                      <span>Net Profit</span>
+                      <span className="lp-mock-pnl-green">+3,840</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-            <span>Trusted by 2,400+ hosts in 38 countries</span>
+
+            {/* Floating chips */}
+            <div className="lp-chip lp-chip-1">
+              <span className="lp-chip-icon">✓</span>
+              Calendar auto-blocked
+            </div>
+            <div className="lp-chip lp-chip-2">
+              <span className="lp-chip-icon lp-chip-icon-amber">📋</span>
+              4 bookings · KSh 8,000
+            </div>
+            <div className="lp-chip lp-chip-3">
+              <span className="lp-chip-icon lp-chip-icon-red">⟳</span>
+              iCal synced
+            </div>
           </div>
         </div>
 
-        <div className="hero__visual">
-          <div className="dash">
-            <div className="dash__header">
-              <div className="dash__dots">
-                <span /><span /><span />
-              </div>
-              <span className="dash__url">hostledger.app/dashboard</span>
-            </div>
-            <div className="dash__body">
-              <aside className="dash__sidebar">
-                <p className="dash__brand">⌂ HostLedger</p>
-                <button className="dash__prop dash__prop--active">Downtown Loft</button>
-                <button className="dash__prop">Beach Villa</button>
-                <button className="dash__prop">Studio 4B</button>
-                <button className="dash__add">+ Add property</button>
-              </aside>
-              <div className="dash__main">
-                <div className="dash__cards">
-                  <div className="dash__card">
-                    <span className="dash__card-label">Monthly profit</span>
-                    <span className="dash__card-val dash__card-val--green">KSh 2,840</span>
-                  </div>
-                  <div className="dash__card">
-                    <span className="dash__card-label">Annual ROI</span>
-                    <span className="dash__card-val dash__card-val--green">14.2%</span>
-                  </div>
-                  <div className="dash__card">
-                    <span className="dash__card-label">Break-even</span>
-                    <span className="dash__card-val dash__card-val--amber">284 days</span>
-                  </div>
-                </div>
-                <div className="dash__chart">
-                  <p className="dash__chart-label">Expenses this month</p>
-                  {[
-                    { name: "Cleaning", pct: 78, color: "#81B29A" },
-                    { name: "Utilities", pct: 44, color: "#F2CC8F" },
-                    { name: "Platform fees", pct: 29, color: "#E07A5F" },
-                    { name: "Insurance", pct: 18, color: "#6c7a9c" },
-                  ].map((b) => (
-                    <div className="dash__bar-row" key={b.name}>
-                      <span className="dash__bar-name">{b.name}</span>
-                      <div className="dash__bar-track">
-                        <div
-                          className="dash__bar-fill"
-                          style={{ width: `${b.pct}%`, background: b.color }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* floating annotation cards */}
-          <div className="hero__tag hero__tag--1">
-            <span className="hero__tag-icon">↑</span>
-            ROI up 12% this quarter
-          </div>
-          <div className="hero__tag hero__tag--2">
-            <span className="hero__tag-icon">⚠</span>
-            4 vacant days · KSh 560 missed
-          </div>
+        {/* Scroll indicator */}
+        <div className="lp-scroll-hint">
+          <div className="lp-scroll-line"/>
+          <span>scroll</span>
         </div>
       </section>
 
-      {/* ── LOGOS / INTEGRATIONS ─────────────────────────── */}
-      <div className="integrations">
-        <p className="integrations__label">Syncs with every platform you're listed on</p>
-        <div className="integrations__logos">
-          {["Airbnb", "Booking.com", "VRBO", "Expedia", "TripAdvisor"].map((name) => (
-            <span key={name} className="integrations__logo">{name}</span>
+      {/* ── PLATFORM TICKER ── */}
+      <div className="lp-ticker">
+        <div className="lp-ticker-track">
+          {[...PLATFORMS, ...PLATFORMS].map((p, i) => (
+            <span key={i} className="lp-ticker-item">
+              <span className="lp-ticker-dot" style={{ background: p.color }} />
+              {p.name}
+            </span>
           ))}
         </div>
       </div>
 
-      {/* ── FEATURES ─────────────────────────────────────── */}
-      <section className="features" id="features">
-        <div className="features__header">
-          <span className="eyebrow">What it does</span>
-          <h2>Built around how<br />hosts actually think</h2>
+      {/* ── STATS ROW ── */}
+      <div className="lp-stats-row" ref={s1.ref}>
+        {STATS.map((s, i) => (
+          <div key={i} className={`lp-stat ${s1.visible ? "lp-stat--in" : ""}`}
+            style={{ animationDelay: `${i * 0.1}s` }}>
+            <span className="lp-stat-val">
+              {s.prefix}
+              {s1.visible && <Counter to={s.to} duration={1600} />}
+              {s.suffix}
+            </span>
+            <span className="lp-stat-label">{s.label}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* ── FEATURES ── */}
+      <section className="lp-features" id="features" ref={s2.ref}>
+        <div className="lp-section-head">
+          <span className="lp-tag">What it does</span>
+          <h2 className="lp-section-title">
+            Everything a host needs.<br />
+            <em>Nothing they don't.</em>
+          </h2>
+          <p className="lp-section-sub">
+            Built around how short-term rental businesses actually run —
+            month by month, booking by booking.
+          </p>
         </div>
 
-        <div className="features__grid">
-          {features.map((f, i) => (
-            <div
-              key={f.title}
-              className={`feat ${activeFeature === i ? "feat--active" : ""}`}
-              onMouseEnter={() => setActiveFeature(i)}
-            >
-              <div className="feat__icon" style={{ background: f.iconBg }}>
-                {f.icon}
+        <div className={`lp-feat-layout ${s2.visible ? "lp-revealed" : ""}`}>
+          {/* Tab list */}
+          <div className="lp-feat-tabs">
+            {FEATURES.map((f, i) => (
+              <button
+                key={f.title}
+                className={`lp-feat-tab ${activeFeature === i ? "lp-feat-tab--active" : ""}`}
+                onClick={() => setActiveFeature(i)}
+                style={activeFeature === i ? { borderColor: f.color, color: f.color } : {}}
+              >
+                <span className="lp-feat-tab-icon" style={activeFeature === i ? { background: `${f.color}22` } : {}}>
+                  {f.icon}
+                </span>
+                <span>{f.title}</span>
+                {activeFeature === i && (
+                  <span className="lp-feat-tab-bar" style={{ background: f.color }} />
+                )}
+              </button>
+            ))}
+          </div>
+
+          {/* Active feature panel */}
+          <div className="lp-feat-panel" style={{ borderColor: `${af.color}33` }}>
+            <div className="lp-feat-panel-left">
+              <div className="lp-feat-panel-icon" style={{ background: `${af.color}18`, color: af.color }}>
+                {af.icon}
               </div>
-              <h3 className="feat__title">{f.title}</h3>
-              <p className="feat__body">{f.body}</p>
-              <div className="feat__bar">
-                <div className="feat__bar-fill" style={{ background: f.color }} />
+              <h3 className="lp-feat-panel-title">{af.title}</h3>
+              <p className="lp-feat-panel-body">{af.body}</p>
+              <ul className="lp-feat-panel-bullets">
+                {af.bullets.map(b => (
+                  <li key={b}>
+                    <span className="lp-feat-bullet-dot" style={{ background: af.color }} />
+                    {b}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="lp-feat-panel-right">
+              <div className="lp-feat-preview" style={{ borderColor: `${af.color}22` }}>
+                {af.preview}
               </div>
             </div>
-          ))}
+          </div>
         </div>
       </section>
 
-      {/* ── HOW IT WORKS ─────────────────────────────────── */}
-      <section className="how" id="how">
-        <div className="how__inner">
-          <span className="eyebrow">How it works</span>
-          <h2>Zero setup time.<br />Real answers fast.</h2>
+      {/* ── VIDEO DEMO ── */}
+      <section className="lp-video-section" id="demo" ref={s3.ref}>
+        <div className={`lp-video-inner ${s3.visible ? "lp-revealed" : ""}`}>
+          <span className="lp-tag">See it in action</span>
+          <h2 className="lp-section-title">
+            From setup to profit report<br />in under 10 minutes.
+          </h2>
 
-          <div className="how__steps">
-            {steps.map((s, i) => (
-              <div className="step" key={s.title}>
-                <div className="step__num">{i + 1}</div>
-                <div className="step__content">
-                  <h3>{s.title}</h3>
-                  <p>{s.body}</p>
+          <div className="lp-video-frame">
+            {!videoPlaying ? (
+              <>
+                {/* Thumbnail / placeholder */}
+                <div className="lp-video-thumb">
+                  <div className="lp-video-thumb-bg">
+                    {/* Animated dashboard mockup as thumbnail */}
+                    <div className="lp-vthumb-header">
+                      <div className="lp-vthumb-dots">
+                        <span/><span/><span/>
+                      </div>
+                      <span className="lp-vthumb-url">hostledger.app/dashboard</span>
+                    </div>
+                    <div className="lp-vthumb-body">
+                      <div className="lp-vthumb-sidebar">
+                        <div className="lp-vthumb-brand">⌂ HostLedger</div>
+                        <div className="lp-vthumb-prop lp-vthumb-prop-active">Downtown Loft</div>
+                        <div className="lp-vthumb-prop">Beach Villa</div>
+                        <div className="lp-vthumb-prop">Studio 4B</div>
+                      </div>
+                      <div className="lp-vthumb-main">
+                        <div className="lp-vthumb-kpis">
+                          {["Monthly P&L","Bookings","Calendar","Expenses"].map(t => (
+                            <div key={t} className="lp-vthumb-tab">{t}</div>
+                          ))}
+                        </div>
+                        <div className="lp-vthumb-months">
+                          {[
+                            { m: "Feb", r: 6200, c: 4800, p: 1400 },
+                            { m: "Mar", r: 7400, c: 5200, p: 2200 },
+                            { m: "Apr", r: 9800, c: 5900, p: 3900 },
+                          ].map(row => (
+                            <div className="lp-vthumb-month-row" key={row.m}>
+                              <span className="lp-vthumb-month-name">{row.m}</span>
+                              <div className="lp-vthumb-month-bar-wrap">
+                                <div className="lp-vthumb-month-bar lp-vthumb-bar-rev" style={{ width: `${(row.r/10000)*100}%` }} />
+                              </div>
+                              <span className="lp-vthumb-month-pnl" style={{ color: "#81b29a" }}>+{row.p.toLocaleString()}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  {/* Play button overlay */}
+                  <button className="lp-play-btn" onClick={() => setVideoPlaying(true)}>
+                    <div className="lp-play-ring" />
+                    <svg width="28" height="28" viewBox="0 0 28 28" fill="white">
+                      <path d="M10 7l14 7-14 7V7z"/>
+                    </svg>
+                  </button>
+                  <div className="lp-video-label">
+                    <span className="lp-video-label-dot" />
+                    Product walkthrough · 3 min
+                  </div>
                 </div>
-                {i < steps.length - 1 && (
-                  <div className="step__connector" aria-hidden />
-                )}
+              </>
+            ) : (
+              <iframe
+                className="lp-video-iframe"
+                src="https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1&rel=0&modestbranding=1"
+                title="HostLedger product demo"
+                allow="autoplay; fullscreen"
+                allowFullScreen
+              />
+            )}
+          </div>
+
+          <div className="lp-video-points">
+            {VIDEO_POINTS.map((p, i) => (
+              <div key={i} className="lp-video-point">
+                <span className="lp-video-point-icon">{p.icon}</span>
+                <span>{p.text}</span>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── MISSED REVENUE CALLOUT ────────────────────────── */}
-      <section className="callout">
-        <div className="callout__inner">
-          <div className="callout__left">
-            <span className="callout__tag">Most overlooked feature</span>
-            <h2 className="callout__headline">
-              You're probably leaving<br />
-              <em>KSh 800–KSh 2,000</em> on the table<br />
-              every month.
+      {/* ── MONTHLY P&L SHOWCASE ── */}
+      <section className="lp-pnl-section" ref={s4.ref}>
+        <div className={`lp-pnl-inner ${s4.visible ? "lp-revealed" : ""}`}>
+          <div className="lp-pnl-left">
+            <span className="lp-tag">Monthly P&amp;L History</span>
+            <h2 className="lp-section-title" style={{ fontSize: "clamp(28px,3vw,40px)" }}>
+              Every month, saved.<br />Your business story<br />in one scroll.
             </h2>
-            <p className="callout__body">
-              Vacant days are silent killers. HostLedger calculates exactly how much
-              revenue you lost to empty nights — so you can adjust your pricing strategy
-              before it hurts your quarterly numbers.
+            <p className="lp-pnl-sub">
+              Each month is stored automatically. Bookings collected, rent,
+              utilities, cleaner fees, and every logged expense summed into
+              a single profit figure. Click any month to see the full breakdown.
             </p>
-            <a href="/login" className="btn btn--primary">See your missed revenue</a>
+            <div className="lp-pnl-bullets">
+              {["Bookings auto-deduct from revenue", "Fixed costs (rent · utilities · cleaner) always included",
+                "Expenses logged per month, grouped by category",
+                "Profit margin and break-even hints per month"].map(b => (
+                <div key={b} className="lp-pnl-bullet">
+                  <span className="lp-pnl-bullet-check">✓</span>
+                  {b}
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="callout__right">
-            <div className="callout__card">
-              <p className="callout__card-label">This month's missed income</p>
-              <p className="callout__card-num">KSh 1,440</p>
-              <p className="callout__card-detail">8 vacant days × KSh 180 avg. nightly rate</p>
-              <div className="callout__months">
-                {["Jan","Feb","Mar","Apr","May","Jun"].map((m, i) => (
-                  <div className="callout__month" key={m}>
-                    <div
-                      className="callout__month-bar"
-                      style={{ height: `${[40,65,30,80,55,70][i]}%` }}
-                    />
-                    <span>{m}</span>
+
+          <div className="lp-pnl-right">
+            {/* Animated monthly cards */}
+            <div className="lp-months-demo">
+              <div className="lp-months-header">Monthly P&amp;L History</div>
+              {DEMO_MONTHS.map((m, i) => (
+                <div
+                  key={m.name}
+                  className={`lp-month-card ${activeMonth === i ? "lp-month-card-open" : ""}`}
+                  style={activeMonth === i ? { borderColor: "#81b29a44" } : {}}
+                  onClick={() => setActiveMonth(activeMonth === i ? -1 : i)}
+                >
+                  <div className="lp-month-head">
+                    <div className="lp-month-head-left">
+                      <span className="lp-month-name">{m.name}</span>
+                      {i === 0 && <span className="lp-month-badge">Current</span>}
+                      <span className="lp-month-bk">{m.bookings} bookings</span>
+                    </div>
+                    <div className="lp-month-head-right">
+                      <span className="lp-month-rev">{m.revenue}</span>
+                      <span className="lp-month-dash">−</span>
+                      <span className="lp-month-cost">{m.costs}</span>
+                      <span className="lp-month-dash">=</span>
+                      <span className="lp-month-profit" style={{ color: "#81b29a" }}>{m.profit}</span>
+                      <span className="lp-month-chevron">{activeMonth === i ? "▲" : "▼"}</span>
+                    </div>
                   </div>
-                ))}
+                  {activeMonth === i && (
+                    <div className="lp-month-body">
+                      <div className="lp-month-detail-row">
+                        <span>Revenue ({m.bookings} bookings)</span>
+                        <span className="lp-month-green">{m.revenue}</span>
+                      </div>
+                      <div className="lp-month-detail-row">
+                        <span>Rent</span>
+                        <span className="lp-month-red">−KSh 1,800</span>
+                      </div>
+                      <div className="lp-month-detail-row">
+                        <span>Utilities</span>
+                        <span className="lp-month-red">−KSh 300</span>
+                      </div>
+                      <div className="lp-month-detail-row">
+                        <span>Cleaner</span>
+                        <span className="lp-month-red">−KSh 500</span>
+                      </div>
+                      <div className="lp-month-detail-row lp-month-detail-total">
+                        <span>Net Profit</span>
+                        <span className="lp-month-green">{m.profit}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+              <div className="lp-months-footer">
+                <span>All-time revenue: KSh 31,400</span>
+                <span className="lp-months-profit">All-time profit: KSh 18,240</span>
               </div>
-              <p className="callout__card-sub">Missed revenue trend</p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ── PRICING ──────────────────────────────────────── */}
-      <section className="pricing" id="pricing">
-        <div className="pricing__header">
-          <span className="eyebrow">Pricing</span>
-          <h2>One price. No tricks.</h2>
-          <p>Free to start. Upgrade when you need more properties.</p>
-        </div>
-
-        <div className="pricing__grid">
-          {plans.map((plan) => (
-            <div
-              key={plan.name}
-              className={`plan ${plan.featured ? "plan--featured" : ""}`}
-            >
-              {plan.badge && <span className="plan__badge">{plan.badge}</span>}
-              <p className="plan__name">{plan.name}</p>
-              <div className="plan__price">
-                <span className="plan__amount">{plan.price}</span>
-                {plan.per && <span className="plan__per">{plan.per}</span>}
-              </div>
-              <p className="plan__desc">{plan.desc}</p>
-              <ul className="plan__features">
-                {plan.features.map((f) => (
-                  <li key={f}>
-                    <span className="plan__check" aria-hidden>✓</span>
-                    {f}
-                  </li>
-                ))}
-              </ul>
-              <a
-                href="#"
-                className={`btn plan__btn ${plan.featured ? "btn--primary" : "btn--outline"}`}
-              >
-                {plan.cta}
-              </a>
-            </div>
-          ))}
-        </div>
-
-        <p className="pricing__note">No credit card required for free plan. Cancel anytime.</p>
-      </section>
-
-      {/* ── FOOTER CTA ───────────────────────────────────── */}
-      <section className="finale">
-        <div className="finale__inner">
-          <h2 className="finale__headline">
-            Your rental is a business.<br />
-            Treat it like one.
+      {/* ── HOW IT WORKS ── */}
+      <section className="lp-how" id="how" ref={s5.ref}>
+        <div className={`lp-how-inner ${s5.visible ? "lp-revealed" : ""}`}>
+          <span className="lp-tag">How it works</span>
+          <h2 className="lp-section-title">
+            Up and running<br />in 4 steps.
           </h2>
-          <p className="finale__sub">
-            Get clear on your numbers in the next 10 minutes.
-          </p>
-          <a href="/login" className="btn btn--primary btn--large">
-            Create your free account
-          </a>
+
+          <div className="lp-steps">
+            {STEPS.map((s, i) => (
+              <div key={s.title} className="lp-step" style={{ animationDelay: `${i * 0.15}s` }}>
+                <div className="lp-step-num">
+                  <span>{i + 1}</span>
+                </div>
+                {i < STEPS.length - 1 && <div className="lp-step-line" />}
+                <div className="lp-step-icon">{s.icon}</div>
+                <h3 className="lp-step-title">{s.title}</h3>
+                <p className="lp-step-body">{s.body}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
-      {/* ── FOOTER ───────────────────────────────────────── */}
-      <footer className="footer">
-        <div className="footer__inner">
-          <div className="footer__brand">
-            <span className="nav__logo-mark">H</span>
+      {/* ── ICAL CALLOUT ── */}
+      <section className="lp-ical-section" ref={s6.ref}>
+        <div className={`lp-ical-inner ${s6.visible ? "lp-revealed" : ""}`}>
+          <div className="lp-ical-left">
+            <span className="lp-tag lp-tag-blue">iCal Sync</span>
+            <h2 className="lp-section-title" style={{ fontSize: "clamp(26px,2.8vw,38px)" }}>
+              Paste a link.<br />Your bookings<br />appear instantly.
+            </h2>
+            <p className="lp-ical-body">
+              Copy the iCal export URL from Airbnb, Booking.com, or VRBO.
+              HostLedger fetches it on the server, parses every reservation,
+              and drops them straight into your calendar and monthly P&amp;L —
+              no manual entry, no duplicates, no CORS headaches.
+            </p>
+            <div className="lp-ical-platforms">
+              {PLATFORMS.map(p => (
+                <div key={p.name} className="lp-ical-platform"
+                  style={{ borderColor: `${p.color}44`, background: `${p.color}10` }}>
+                  <span className="lp-ical-platform-dot" style={{ background: p.color }} />
+                  <span style={{ color: p.color }}>{p.name}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="lp-ical-right">
+            <div className="lp-ical-card">
+              <div className="lp-ical-card-header">
+                <span>iCal Sync</span>
+                <span className="lp-ical-card-tag">✓ Real-time</span>
+              </div>
+              {[
+                { platform: "Airbnb", url: "airbnb.com/calendar/ical/…", status: "synced", count: 4, color: "#FF5A5F" },
+                { platform: "Booking.com", url: "booking.com/hotel/ical/…", status: "synced", count: 2, color: "#4A7FBF" },
+                { platform: "Direct", url: "manual bookings", status: "synced", count: 1, color: "#81B29A" },
+              ].map(src => (
+                <div key={src.platform} className="lp-ical-src">
+                  <div className="lp-ical-src-left">
+                    <span className="lp-ical-src-dot" style={{ background: src.color }} />
+                    <div>
+                      <div className="lp-ical-src-name" style={{ color: src.color }}>{src.platform}</div>
+                      <div className="lp-ical-src-url">{src.url}</div>
+                    </div>
+                  </div>
+                  <div className="lp-ical-src-right">
+                    <span className="lp-ical-src-count">{src.count} bookings</span>
+                    <span className="lp-ical-src-status">✓ Synced</span>
+                  </div>
+                </div>
+              ))}
+              <div className="lp-ical-result">
+                <span>✓ 7 bookings imported · 0 duplicates</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── FINAL CTA ── */}
+      <section className="lp-finale">
+        <div className="lp-finale-blob" aria-hidden />
+        <div className="lp-finale-inner">
+          <div className="lp-finale-badge">Free to start · No credit card</div>
+          <h2 className="lp-finale-headline">
+            Know your numbers.<br />
+            <em>Every month.</em>
+          </h2>
+          <p className="lp-finale-sub">
+            Join thousands of hosts who stopped guessing and started knowing.
+          </p>
+          <a href="/login" className="lp-btn lp-btn-primary lp-btn-xl">
+            Create your free account
+            <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
+              <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.6"
+                strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </a>
+          <p className="lp-finale-note">
+            Set up takes under 5 minutes. Your first monthly report is instant.
+          </p>
+        </div>
+      </section>
+
+      {/* ── FOOTER ── */}
+      <footer className="lp-footer">
+        <div className="lp-footer-inner">
+          <div className="lp-footer-brand">
+            <span className="lp-logo-mark">H</span>
             <span>HostLedger</span>
           </div>
-          <div className="footer__links">
+          <nav className="lp-footer-links">
             <a href="#">Privacy</a>
             <a href="#">Terms</a>
             <a href="#">Contact</a>
-            <a href="#">Twitter</a>
-          </div>
-          <p className="footer__copy">© 2026 HostLedger</p>
+          </nav>
+          <p className="lp-footer-copy">© 2026 HostLedger. All rights reserved.</p>
         </div>
       </footer>
     </>
   );
 }
 
-/* ── DATA ─────────────────────────────────────────────────── */
+/* ── DATA ────────────────────────────────────────────────────────────────── */
 
-const features = [
+const PLATFORMS = [
+  { name: "Airbnb",      color: "#FF5A5F" },
+  { name: "Booking.com", color: "#4A7FBF" },
+  { name: "VRBO",        color: "#1A8FFF" },
+  { name: "Expedia",     color: "#FFC72C" },
+  { name: "TripAdvisor", color: "#34E0A1" },
+  { name: "Agoda",       color: "#E8000B" },
+];
+
+const STATS = [
+  { to: 2400,  prefix: "",      suffix: "+", label: "hosts worldwide" },
+  { to: 38,    prefix: "",      suffix: "",  label: "countries" },
+  { to: 12000, prefix: "KSh ", suffix: "",  label: "avg. monthly profit tracked" },
+  { to: 98,    prefix: "",      suffix: "%", label: "keep using after 30 days" },
+];
+
+const FEATURES = [
   {
-    icon: "⟳",
-    title: "ROI calculator",
-    body: "Put in your capital, nightly rate, and occupancy. Get your exact daily, weekly, and monthly profit — and a countdown to break-even.",
-    iconBg: "rgba(129,178,154,0.12)",
+    icon: "📋",
+    title: "Bookings Tracker",
     color: "#81B29A",
+    body: "Log every reservation: guest name, check-in/out, source, payment status, discounts given, and notes. All in one place.",
+    bullets: [
+      "Track Airbnb, Booking.com, Direct, Walk-in, WhatsApp bookings",
+      "Mark paid, partial, or outstanding payments",
+      "Log discounts per guest — shows in monthly P&L",
+      "Guest notes for each booking",
+    ],
+    preview: (
+      <div className="lp-prev-bookings">
+        {[
+          { guest: "Alice Kamau", nights: 3, src: "Airbnb", paid: "KSh 2,400", status: "paid" },
+          { guest: "Bob Mwangi", nights: 5, src: "Direct", paid: "KSh 3,800", status: "partial" },
+          { guest: "Chen Lin", nights: 2, src: "Booking.com", paid: "KSh 1,600", status: "paid" },
+        ].map(b => (
+          <div key={b.guest} className="lp-prev-bk-row">
+            <div className="lp-prev-bk-left">
+              <span className="lp-prev-bk-guest">{b.guest}</span>
+              <span className="lp-prev-bk-meta">{b.nights}n · {b.src}</span>
+            </div>
+            <div className="lp-prev-bk-right">
+              <span className="lp-prev-bk-amt">{b.paid}</span>
+              <span className={`lp-prev-bk-status lp-prev-bk-${b.status}`}>
+                {b.status}
+              </span>
+            </div>
+          </div>
+        ))}
+        <div className="lp-prev-bk-total">
+          <span>3 bookings collected</span>
+          <span className="lp-prev-bk-total-val">KSh 7,800</span>
+        </div>
+      </div>
+    ),
   },
   {
-    icon: "≡",
-    title: "Expense tracker",
-    body: "Categorize every outgoing — cleaning, utilities, repairs, platform fees. See the full picture, not just what's in your bank account.",
-    iconBg: "rgba(242,204,143,0.12)",
-    color: "#F2CC8F",
-  },
-  {
-    icon: "◈",
-    title: "Calendar sync",
-    body: "Paste iCal links from Airbnb, Booking.com, VRBO, and any other platform. All your bookings in one place, automatically.",
-    iconBg: "rgba(224,122,95,0.12)",
+    icon: "📅",
+    title: "Auto-blocking Calendar",
     color: "#E07A5F",
+    body: "Every booking you add immediately blocks those dates on the visual calendar. No double-booking ever. Sync iCal feeds to import external reservations too.",
+    bullets: [
+      "Check-in/out dates colored by booking source",
+      "Month navigation with upcoming check-ins strip",
+      "Hover any day to see guest name and source",
+      "iCal sync imports Airbnb & Booking.com bookings",
+    ],
+    preview: (
+      <div className="lp-prev-cal">
+        <div className="lp-prev-cal-nav">
+          <span>‹</span>
+          <span className="lp-prev-cal-month">April 2025</span>
+          <span>›</span>
+        </div>
+        <div className="lp-prev-cal-dow">
+          {["Su","Mo","Tu","We","Th","Fr","Sa"].map(d => (
+            <span key={d} className="lp-prev-cal-dow-item">{d}</span>
+          ))}
+        </div>
+        <div className="lp-prev-cal-grid">
+          {Array.from({ length: 30 }, (_, i) => i + 1).map(d => {
+            const airbnb  = d >= 3  && d <= 6;
+            const direct  = d >= 10 && d <= 14;
+            const booking = d >= 22 && d <= 25;
+            const color   = airbnb ? "#FF5A5F" : direct ? "#81B29A" : booking ? "#4A7FBF" : null;
+            const isCI = d === 3 || d === 10 || d === 22;
+            const isCO = d === 6 || d === 14 || d === 25;
+            return (
+              <div key={d}
+                className={`lp-prev-day ${color ? "lp-prev-day-bk" : ""} ${isCI ? "lp-prev-day-ci" : ""} ${isCO ? "lp-prev-day-co" : ""}`}
+                style={color ? { "--dc": color } as React.CSSProperties : {}}>
+                {d}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    ),
   },
   {
-    icon: "△",
-    title: "Missed revenue alerts",
-    body: "Vacant days have a dollar value. HostLedger tells you what you lost each month so you can price smarter next time.",
-    iconBg: "rgba(108,122,156,0.12)",
-    color: "#6c7a9c",
-  },
-  {
-    icon: "⊞",
-    title: "Multi-property",
-    body: "Own more than one place? Each property gets its own full dashboard. Switch between them in the sidebar — no context-switching mess.",
-    iconBg: "rgba(129,178,154,0.12)",
-    color: "#81B29A",
-  },
-  {
-    icon: "⌁",
-    title: "Actual vs. projected",
-    body: "Compare what you planned to earn and spend versus what actually happened. Monthly variance reports in seconds.",
-    iconBg: "rgba(242,204,143,0.12)",
+    icon: "🧾",
+    title: "Monthly Expense Tracker",
     color: "#F2CC8F",
+    body: "Log every cost to the right month. Navigate between months, see category breakdowns, and watch them flow directly into your monthly P&L.",
+    bullets: [
+      "Month-by-month navigation (Apr 2025, Mar 2025…)",
+      "Category breakdown: Cleaning, Utilities, Repairs, Supplies…",
+      "Recurring vs one-time expenses tracked separately",
+      "All logged expenses deducted automatically in Summary",
+    ],
+    preview: (
+      <div className="lp-prev-expenses">
+        <div className="lp-prev-exp-nav">
+          <span>‹</span>
+          <span className="lp-prev-exp-month">April 2025</span>
+          <span>›</span>
+        </div>
+        <div className="lp-prev-exp-stats">
+          <div className="lp-prev-exp-stat">
+            <span className="lp-prev-exp-stat-val">KSh 1,840</span>
+            <span className="lp-prev-exp-stat-label">Total this month</span>
+          </div>
+          <div className="lp-prev-exp-stat">
+            <span className="lp-prev-exp-stat-val">7</span>
+            <span className="lp-prev-exp-stat-label">Entries</span>
+          </div>
+        </div>
+        {[
+          { cat: "Cleaning", amt: 800, pct: 80 },
+          { cat: "Utilities", amt: 450, pct: 45 },
+          { cat: "Supplies", amt: 350, pct: 35 },
+          { cat: "Repairs", amt: 240, pct: 24 },
+        ].map(e => (
+          <div key={e.cat} className="lp-prev-exp-row">
+            <div className="lp-prev-exp-row-top">
+              <span>{e.cat}</span>
+              <span className="lp-prev-exp-amt">KSh {e.amt}</span>
+            </div>
+            <div className="lp-prev-exp-bar">
+              <div className="lp-prev-exp-fill" style={{ width: `${e.pct}%` }} />
+            </div>
+          </div>
+        ))}
+      </div>
+    ),
+  },
+  {
+    icon: "📊",
+    title: "P&L History",
+    color: "#6c7ab8",
+    body: "Every month is saved automatically. Click any month to see the full breakdown: revenue from each booking, fixed costs, expenses, discounts given, and net profit.",
+    bullets: [
+      "All-time revenue, expenses and profit totals",
+      "Per-month cards collapse/expand",
+      "Profit margin % and break-even hints",
+      "Discounts given shown separately",
+    ],
+    preview: (
+      <div className="lp-prev-pnl">
+        {[
+          { m: "April 2025", bk: 4, rev: "KSh 9,800", profit: "+KSh 3,900", open: true },
+          { m: "March 2025", bk: 3, rev: "KSh 7,400", profit: "+KSh 2,200", open: false },
+          { m: "February 2025", bk: 2, rev: "KSh 6,200", profit: "+KSh 1,400", open: false },
+        ].map(row => (
+          <div key={row.m} className={`lp-prev-pnl-card ${row.open ? "lp-prev-pnl-open" : ""}`}>
+            <div className="lp-prev-pnl-head">
+              <span className="lp-prev-pnl-month">{row.m}</span>
+              <span className="lp-prev-pnl-bk">{row.bk} bookings</span>
+              <span className="lp-prev-pnl-profit">{row.profit}</span>
+            </div>
+            {row.open && (
+              <div className="lp-prev-pnl-body">
+                <div className="lp-prev-pnl-row">
+                  <span>Revenue</span><span className="lp-green">{row.rev}</span>
+                </div>
+                <div className="lp-prev-pnl-row">
+                  <span>Fixed costs</span><span className="lp-red">−KSh 2,600</span>
+                </div>
+                <div className="lp-prev-pnl-row">
+                  <span>Expenses</span><span className="lp-red">−KSh 1,840</span>
+                </div>
+                <div className="lp-prev-pnl-row lp-prev-pnl-total">
+                  <span>Net Profit</span><span className="lp-green">{row.profit}</span>
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    ),
   },
 ];
 
-const steps = [
+const STEPS = [
   {
+    icon: "🏠",
     title: "Add your property",
-    body: "Name it, pick the type, set a color. Takes about 30 seconds.",
+    body: "Name it, pick a type and colour. 30 seconds. Add as many properties as you have.",
   },
   {
-    title: "Fill in your numbers",
-    body: "Nightly rate, occupancy estimate, monthly costs, capital invested.",
+    icon: "💰",
+    title: "Set up Financials",
+    body: "Enter your nightly rate, platform fee %, projected stays, rent, utilities, and cleaner cost.",
   },
   {
-    title: "Sync your calendars",
-    body: "Paste iCal URLs from every platform you're on. Done.",
+    icon: "📋",
+    title: "Log bookings & expenses",
+    body: "Add bookings as they come in. Log expenses to the right month. Or sync your iCal feed to import automatically.",
   },
   {
-    title: "Watch the dashboard",
-    body: "Your ROI, break-even date, missed revenue, and profit — live.",
+    icon: "📊",
+    title: "See your monthly P&L",
+    body: "Your profit, broken down to the cent. Every month, saved forever. Click any month to see the full story.",
   },
 ];
 
-const plans = [
-  {
-    name: "Starter",
-    price: "KSh 0",
-    per: "",
-    desc: "1 property. Always free.",
-    badge: null,
-    featured: false,
-    cta: "Start for free",
-    features: [
-      "1 property",
-      "Financial calculator",
-      "Expense tracker",
-      "2 calendar feeds",
-    ],
-  },
-  {
-    name: "Pro",
-    price: "KSh 19",
-    per: "/mo",
-    desc: "For serious hosts.",
-    badge: "Most popular",
-    featured: true,
-    cta: "Start 14-day free trial",
-    features: [
-      "Unlimited properties",
-      "Unlimited calendar feeds",
-      "Missed revenue alerts",
-      "Variance reports",
-      "CSV & PDF export",
-      "Priority support",
-    ],
-  },
-  {
-    name: "Agency",
-    price: "KSh 49",
-    per: "/mo",
-    desc: "For property managers.",
-    badge: null,
-    featured: false,
-    cta: "Contact us",
-    features: [
-      "Everything in Pro",
-      "Client reports",
-      "Team access & roles",
-      "White-label branding",
-      "Dedicated onboarding",
-    ],
-  },
+const VIDEO_POINTS = [
+  { icon: "⚡", text: "Full walkthrough in 3 minutes" },
+  { icon: "📅", text: "Calendar auto-blocking demo" },
+  { icon: "📊", text: "Monthly P&L live calculation" },
+  { icon: "⟳", text: "iCal sync from Airbnb" },
 ];
 
-/* ── STYLES ───────────────────────────────────────────────── */
+const DEMO_MONTHS = [
+  { name: "April 2025",    bookings: 4, revenue: "KSh 9,800", costs: "KSh 5,900", profit: "KSh 3,900" },
+  { name: "March 2025",    bookings: 3, revenue: "KSh 7,400", costs: "KSh 5,200", profit: "KSh 2,200" },
+  { name: "February 2025", bookings: 2, revenue: "KSh 6,200", costs: "KSh 4,800", profit: "KSh 1,400" },
+];
 
-const css = `
-  @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400&display=swap');
+/* ── CSS ─────────────────────────────────────────────────────────────────── */
+const CSS = `
+  @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400&display=swap');
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
-    --bg:       #0e0f13;
-    --bg2:      #141519;
-    --bg3:      #1a1b21;
-    --border:   rgba(255,255,255,0.07);
-    --border2:  rgba(255,255,255,0.12);
-    --text:     #e8e6df;
-    --muted:    #7a7d8a;
-    --faint:    #3a3d4a;
-    --sage:     #81B29A;
-    --sage-dim: #4a7a62;
-    --amber:    #F2CC8F;
-    --coral:    #E07A5F;
-    --serif:    'Instrument Serif', Georgia, serif;
-    --sans:     'Geist', system-ui, sans-serif;
-    --mono:     'Geist Mono', monospace;
+    --bg:    #0b0c10;
+    --bg2:   #111318;
+    --bg3:   #181a21;
+    --bd:    rgba(255,255,255,0.07);
+    --bd2:   rgba(255,255,255,0.13);
+    --text:  #e8e6df;
+    --muted: #7a7d8a;
+    --faint: #3a3d4a;
+    --sage:  #81B29A;
+    --amber: #F2CC8F;
+    --coral: #E07A5F;
+    --blue:  #6c7ab8;
+    --serif: 'Instrument Serif', Georgia, serif;
+    --sans:  'Geist', system-ui, sans-serif;
+    --mono:  'Geist Mono', monospace;
   }
 
   html { scroll-behavior: smooth; }
-
   body {
     font-family: var(--sans);
     background: var(--bg);
     color: var(--text);
     -webkit-font-smoothing: antialiased;
     line-height: 1.6;
+    overflow-x: hidden;
   }
 
-  /* --- NAV --- */
-  .nav {
-    position: fixed;
-    top: 0; left: 0; right: 0;
-    z-index: 200;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+  /* ── Scroll reveal ── */
+  .lp-revealed > * { animation: lp-fade-up 0.7s both; }
+  .lp-revealed > *:nth-child(1) { animation-delay: 0.05s; }
+  .lp-revealed > *:nth-child(2) { animation-delay: 0.15s; }
+  .lp-revealed > *:nth-child(3) { animation-delay: 0.25s; }
+  .lp-revealed > *:nth-child(4) { animation-delay: 0.35s; }
+  @keyframes lp-fade-up {
+    from { opacity: 0; transform: translateY(24px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── NAV ── */
+  .lp-nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 500;
+    display: flex; align-items: center; justify-content: space-between;
     padding: 20px 48px;
-    transition: background 0.25s, border-color 0.25s, padding 0.25s;
+    transition: background 0.3s, backdrop-filter 0.3s, border-color 0.3s, padding 0.25s;
     border-bottom: 1px solid transparent;
   }
-  .nav--stuck {
-    background: rgba(14,15,19,0.9);
-    backdrop-filter: blur(12px);
-    border-color: var(--border);
+  .lp-nav--stuck {
+    background: rgba(11,12,16,0.88);
+    backdrop-filter: blur(16px);
+    border-color: var(--bd);
     padding: 14px 48px;
   }
-  .nav__logo {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 15px;
-    font-weight: 500;
-    color: var(--text);
-    text-decoration: none;
-    letter-spacing: -0.2px;
+  .lp-logo {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 15px; font-weight: 600; color: var(--text);
+    text-decoration: none; letter-spacing: -0.2px;
   }
-  .nav__logo-mark {
-    width: 28px; height: 28px;
-    background: var(--sage);
-    color: #0e0f13;
-    border-radius: 7px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 600;
-    font-size: 13px;
+  .lp-logo-mark {
+    width: 28px; height: 28px; background: var(--sage); color: #0b0c10;
+    border-radius: 7px; display: inline-flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 13px;
   }
-  .nav__links {
-    list-style: none;
-    display: flex;
-    gap: 32px;
+  .lp-nav-links {
+    list-style: none; display: flex; gap: 32px;
   }
-  .nav__links a {
-    font-size: 13px;
-    color: var(--muted);
-    text-decoration: none;
-    transition: color 0.15s;
+  .lp-nav-links a {
+    font-size: 13px; color: var(--muted); text-decoration: none; transition: color 0.15s;
   }
-  .nav__links a:hover { color: var(--text); }
-  .nav__cta {
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--bg);
-    background: var(--text);
-    padding: 9px 20px;
-    border-radius: 8px;
-    text-decoration: none;
-    transition: opacity 0.15s;
+  .lp-nav-links a:hover { color: var(--text); }
+  .lp-nav-cta {
+    font-size: 13px; font-weight: 600;
+    background: var(--sage); color: #0b0c10;
+    padding: 9px 20px; border-radius: 8px;
+    text-decoration: none; transition: opacity 0.15s, transform 0.1s;
+    letter-spacing: -0.1px;
   }
-  .nav__cta:hover { opacity: 0.85; }
+  .lp-nav-cta:hover { opacity: 0.88; transform: translateY(-1px); }
 
-  /* --- HERO --- */
-  .hero {
+  /* ── HERO ── */
+  .lp-hero {
     min-height: 100vh;
     padding: 140px 48px 80px;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 60px;
-    align-items: center;
-    max-width: 1160px;
-    margin: 0 auto;
-    position: relative;
+    display: flex; flex-direction: column; justify-content: center;
+    position: relative; overflow: hidden;
   }
-  .hero__bg-grid {
-    position: fixed;
-    inset: 0;
-    background-image:
-      linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
-    background-size: 60px 60px;
+  .lp-hero-inner {
+    max-width: 1200px; margin: 0 auto;
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 64px; align-items: center;
+  }
+
+  /* Ambient blobs */
+  .blob {
+    position: absolute; border-radius: 50%;
+    filter: blur(100px); pointer-events: none; opacity: 0.5;
+    animation: blob-drift 10s ease-in-out infinite alternate;
+  }
+  .blob-1 { width: 500px; height: 500px; background: rgba(129,178,154,0.18); top: -100px; left: -100px; animation-duration: 12s; }
+  .blob-2 { width: 400px; height: 400px; background: rgba(108,122,184,0.15); top: 40%; right: -80px; animation-duration: 9s; animation-delay: -3s; }
+  .blob-3 { width: 350px; height: 350px; background: rgba(224,122,95,0.1); bottom: -60px; left: 40%; animation-duration: 14s; animation-delay: -6s; }
+  @keyframes blob-drift {
+    from { transform: translate(0, 0) scale(1); }
+    to   { transform: translate(30px, 40px) scale(1.1); }
+  }
+  .lp-grid-overlay {
+    position: absolute; inset: 0;
+    background-image: linear-gradient(rgba(255,255,255,0.022) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.022) 1px, transparent 1px);
+    background-size: 64px 64px;
+    mask-image: radial-gradient(ellipse 80% 70% at 50% 0%, black 30%, transparent 100%);
     pointer-events: none;
-    z-index: 0;
-    mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 40%, transparent 100%);
   }
-  .hero__content { position: relative; z-index: 1; }
-  .hero__eyebrow {
-    font-size: 11px;
-    font-weight: 500;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
-    color: var(--sage);
-    margin-bottom: 20px;
+
+  /* Hero left */
+  .lp-hero-left { position: relative; z-index: 1; }
+  .lp-eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 11px; font-weight: 600; letter-spacing: 1.5px;
+    text-transform: uppercase; color: var(--sage); margin-bottom: 24px;
   }
-  .hero__headline {
+  .lp-eyebrow-dot {
+    width: 6px; height: 6px; background: var(--sage);
+    border-radius: 50%; animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.8); }
+  }
+  .lp-headline {
     font-family: var(--serif);
-    font-size: clamp(44px, 5vw, 62px);
-    line-height: 1.05;
-    color: var(--text);
-    margin-bottom: 20px;
-    letter-spacing: -0.5px;
+    font-size: clamp(46px, 5.5vw, 70px);
+    line-height: 1.03; color: var(--text);
+    margin-bottom: 22px; letter-spacing: -0.5px;
   }
-  .hero__sub {
-    font-size: 15px;
-    color: var(--muted);
-    line-height: 1.7;
-    max-width: 420px;
-    margin-bottom: 36px;
+  .lp-headline em {
+    color: var(--sage); font-style: normal;
+    text-decoration: underline; text-decoration-color: rgba(129,178,154,0.35);
+    text-underline-offset: 4px;
   }
-  .hero__actions {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 32px;
+  .lp-hero-sub {
+    font-size: 15px; color: var(--muted); line-height: 1.75;
+    max-width: 440px; margin-bottom: 36px;
   }
-  .hero__proof {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    font-size: 12px;
-    color: var(--muted);
+  .lp-hero-actions {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 36px;
   }
-  .hero__avatars {
-    display: flex;
+  .lp-trust { display: flex; align-items: center; gap: 12px; font-size: 12px; color: var(--muted); }
+  .lp-avatars { display: flex; }
+  .lp-avatar {
+    width: 28px; height: 28px; border-radius: 50%;
+    border: 2px solid var(--bg); margin-left: -8px;
   }
-  .hero__avatar {
-    width: 26px; height: 26px;
-    border-radius: 50%;
-    border: 2px solid var(--bg);
-    margin-left: -7px;
-    display: block;
-  }
-  .hero__avatar:first-child { margin-left: 0; }
+  .lp-avatar:first-child { margin-left: 0; }
+  .lp-trust-text { font-size: 12px; color: var(--faint); }
 
-  /* --- DASHBOARD MOCKUP --- */
-  .hero__visual {
-    position: relative;
-    z-index: 1;
+  /* ── Buttons ── */
+  .lp-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 12px 24px; border-radius: 10px;
+    font-family: var(--sans); font-size: 14px; font-weight: 600;
+    text-decoration: none; cursor: pointer; border: 1.5px solid transparent;
+    transition: all 0.18s; letter-spacing: -0.1px;
   }
-  .dash {
+  .lp-btn:active { transform: scale(0.97); }
+  .lp-btn-primary { background: var(--sage); color: #0b0c10; border-color: var(--sage); }
+  .lp-btn-primary:hover { opacity: 0.88; transform: translateY(-1px); box-shadow: 0 8px 24px rgba(129,178,154,0.25); }
+  .lp-btn-ghost { background: rgba(255,255,255,0.05); color: var(--muted); border-color: var(--bd2); }
+  .lp-btn-ghost:hover { color: var(--text); border-color: var(--bd2); background: rgba(255,255,255,0.09); }
+  .lp-btn-xl { font-size: 16px; padding: 16px 36px; border-radius: 12px; }
+
+  /* ── Mockup ── */
+  .lp-hero-right { position: relative; z-index: 1; }
+  .lp-mockup {
+    background: var(--bg2); border: 1px solid var(--bd2);
+    border-radius: 14px; overflow: hidden;
+    box-shadow: 0 40px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04);
+  }
+  .lp-mockup-bar {
+    background: #08090c; padding: 10px 16px;
+    display: flex; align-items: center; gap: 10px;
+    border-bottom: 1px solid var(--bd);
+  }
+  .lp-dot { width: 9px; height: 9px; border-radius: 50%; }
+  .lp-dot-r { background: #FF5F57; }
+  .lp-dot-y { background: #FEBC2E; }
+  .lp-dot-g { background: #28C840; }
+  .lp-mockup-url { font-family: var(--mono); font-size: 10px; color: var(--faint); margin-left: 4px; }
+  .lp-mockup-body { display: flex; min-height: 260px; }
+  .lp-mock-sidebar {
+    width: 110px; background: #080a0e;
+    border-right: 1px solid var(--bd); padding: 14px 10px; flex-shrink: 0;
+  }
+  .lp-mock-brand {
+    font-size: 9px; font-weight: 700; color: var(--text); opacity: 0.6;
+    padding: 0 6px 10px; margin-bottom: 6px; border-bottom: 1px solid var(--bd);
+  }
+  .lp-mock-prop {
+    display: block; width: 100%; padding: 6px 8px; background: none; border: none;
+    border-radius: 5px; font-family: var(--sans); font-size: 9px; color: var(--muted);
+    text-align: left; cursor: default; margin-bottom: 2px;
+  }
+  .lp-mock-prop-active { background: rgba(129,178,154,0.12); color: var(--sage); }
+  .lp-mock-main { flex: 1; padding: 14px; }
+  .lp-mock-kpis { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 10px; }
+  .lp-mock-kpi {
+    background: var(--bg3); border: 1px solid var(--bd); border-radius: 7px; padding: 8px;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .lp-mock-kpi-label { font-size: 7px; color: var(--faint); }
+  .lp-mock-kpi-val { font-size: 11px; font-weight: 700; font-family: var(--mono); }
+  .lp-mock-cal {
+    background: var(--bg3); border: 1px solid var(--bd); border-radius: 7px; padding: 10px; margin-bottom: 8px;
+  }
+  .lp-mock-sec { font-size: 7px; color: var(--faint); margin-bottom: 6px; }
+  .lp-mock-days { display: flex; gap: 3px; flex-wrap: wrap; }
+  .lp-mock-day {
+    width: 16px; height: 16px; display: flex; align-items: center; justify-content: center;
+    font-size: 7px; color: var(--muted); border-radius: 50%;
+  }
+  .lp-mock-day-booked { background: rgba(129,178,154,0.3); color: var(--sage); }
+  .lp-mock-pnl { background: var(--bg3); border: 1px solid var(--bd); border-radius: 7px; padding: 10px; }
+  .lp-mock-pnl-row {
+    display: flex; justify-content: space-between; font-size: 8px; color: var(--muted); margin-bottom: 4px;
+  }
+  .lp-mock-pnl-neg { color: var(--coral); font-family: var(--mono); }
+  .lp-mock-pnl-green { color: var(--sage); font-family: var(--mono); }
+  .lp-mock-pnl-profit { font-weight: 700; color: var(--text); border-top: 1px solid var(--bd); padding-top: 4px; margin-top: 4px; margin-bottom: 0; }
+
+  /* Floating chips */
+  .lp-chip {
+    position: absolute; background: var(--bg2); border: 1px solid var(--bd2);
+    border-radius: 10px; padding: 8px 14px; font-size: 12px; font-weight: 500; color: var(--text);
+    display: flex; align-items: center; gap: 7px; white-space: nowrap;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    animation: chip-float 4s ease-in-out infinite;
+  }
+  .lp-chip-icon { font-size: 13px; color: var(--sage); }
+  .lp-chip-icon-amber { color: var(--amber); }
+  .lp-chip-icon-red { color: var(--coral); }
+  .lp-chip-1 { bottom: -16px; left: -30px; animation-delay: 0s; }
+  .lp-chip-2 { top: -14px; right: -20px; animation-delay: 1.5s; animation-duration: 3.5s; }
+  .lp-chip-3 { bottom: 40px; right: -30px; animation-delay: 0.8s; animation-duration: 5s; }
+  @keyframes chip-float {
+    0%, 100% { transform: translateY(0) rotate(-1deg); }
+    50% { transform: translateY(-8px) rotate(1deg); }
+  }
+
+  /* Scroll hint */
+  .lp-scroll-hint {
+    position: absolute; bottom: 28px; left: 50%; transform: translateX(-50%);
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    font-size: 10px; color: var(--faint); letter-spacing: 1.5px; text-transform: uppercase;
+    animation: scroll-bob 2s ease-in-out infinite;
+  }
+  .lp-scroll-line {
+    width: 1px; height: 40px; background: linear-gradient(to bottom, var(--faint), transparent);
+  }
+  @keyframes scroll-bob {
+    0%, 100% { opacity: 0.5; transform: translateX(-50%) translateY(0); }
+    50% { opacity: 1; transform: translateX(-50%) translateY(6px); }
+  }
+
+  /* ── TICKER ── */
+  .lp-ticker {
+    border-top: 1px solid var(--bd); border-bottom: 1px solid var(--bd);
+    overflow: hidden; padding: 0;
     background: var(--bg2);
-    border: 1px solid var(--border2);
-    border-radius: 14px;
-    overflow: hidden;
   }
-  .dash__header {
-    background: #0a0b0f;
-    padding: 10px 16px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    border-bottom: 1px solid var(--border);
+  .lp-ticker-track {
+    display: flex; gap: 0; width: max-content;
+    animation: ticker-scroll 22s linear infinite;
   }
-  .dash__dots {
-    display: flex;
-    gap: 5px;
+  .lp-ticker:hover .lp-ticker-track { animation-play-state: paused; }
+  @keyframes ticker-scroll {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-50%); }
   }
-  .dash__dots span {
-    width: 8px; height: 8px;
-    border-radius: 50%;
-    background: var(--faint);
-    display: block;
-  }
-  .dash__url {
-    font-family: var(--mono);
-    font-size: 10px;
-    color: var(--faint);
-  }
-  .dash__body {
-    display: flex;
-  }
-  .dash__sidebar {
-    width: 110px;
-    background: #0c0d11;
-    padding: 14px 10px;
-    border-right: 1px solid var(--border);
-    flex-shrink: 0;
-  }
-  .dash__brand {
-    font-size: 9px;
-    font-weight: 600;
-    color: var(--text);
-    padding: 0 6px 10px;
-    margin-bottom: 6px;
-    border-bottom: 1px solid var(--border);
-    opacity: 0.6;
-  }
-  .dash__prop {
-    display: block;
-    width: 100%;
-    padding: 6px 8px;
-    background: none;
-    border: none;
-    border-radius: 5px;
-    font-family: var(--sans);
-    font-size: 9px;
-    color: var(--muted);
-    text-align: left;
-    cursor: default;
-    margin-bottom: 2px;
-  }
-  .dash__prop--active {
-    background: rgba(129,178,154,0.1);
-    color: var(--sage);
-  }
-  .dash__add {
-    display: block;
-    width: 100%;
-    padding: 6px 8px;
-    background: none;
-    border: none;
-    font-family: var(--sans);
-    font-size: 9px;
-    color: var(--faint);
-    text-align: left;
-    cursor: default;
-    margin-top: 8px;
-  }
-  .dash__main {
-    flex: 1;
-    padding: 14px;
-  }
-  .dash__cards {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
-    margin-bottom: 12px;
-  }
-  .dash__card {
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    border-radius: 7px;
-    padding: 10px;
-  }
-  .dash__card-label {
-    display: block;
-    font-size: 8px;
-    color: var(--faint);
-    margin-bottom: 5px;
-  }
-  .dash__card-val {
-    display: block;
-    font-size: 14px;
-    font-weight: 600;
-    font-family: var(--mono);
-  }
-  .dash__card-val--green { color: var(--sage); }
-  .dash__card-val--amber { color: var(--amber); }
-  .dash__chart {
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    border-radius: 7px;
-    padding: 11px;
-  }
-  .dash__chart-label {
-    font-size: 8px;
-    color: var(--faint);
-    margin-bottom: 10px;
-  }
-  .dash__bar-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 6px;
-  }
-  .dash__bar-name {
-    font-size: 8px;
-    color: var(--muted);
-    width: 60px;
-    flex-shrink: 0;
-  }
-  .dash__bar-track {
-    flex: 1;
-    height: 4px;
-    background: var(--bg2);
-    border-radius: 2px;
-    overflow: hidden;
-  }
-  .dash__bar-fill {
-    height: 100%;
-    border-radius: 2px;
-    transition: width 0.6s ease;
-  }
-
-  /* floating annotation cards */
-  .hero__tag {
-    position: absolute;
-    background: var(--bg2);
-    border: 1px solid var(--border2);
-    border-radius: 8px;
-    padding: 8px 12px;
-    font-size: 11px;
-    color: var(--text);
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    white-space: nowrap;
-    animation: float 3s ease-in-out infinite;
-  }
-  .hero__tag-icon { font-size: 12px; }
-  .hero__tag--1 {
-    bottom: -16px; left: -24px;
-    color: var(--sage);
-    animation-delay: 0s;
-  }
-  .hero__tag--2 {
-    top: -16px; right: -16px;
-    color: var(--amber);
-    animation-delay: 1.5s;
-  }
-  @keyframes float {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-6px); }
-  }
-
-  /* --- BUTTONS --- */
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-    padding: 11px 22px;
-    border-radius: 9px;
-    font-family: var(--sans);
-    font-size: 13px;
-    font-weight: 500;
-    text-decoration: none;
-    cursor: pointer;
-    border: 1.5px solid transparent;
-    transition: opacity 0.15s, transform 0.1s;
-  }
-  .btn:active { transform: scale(0.98); }
-  .btn--primary {
-    background: var(--sage);
-    color: #0e0f13;
-    border-color: var(--sage);
-  }
-  .btn--primary:hover { opacity: 0.88; }
-  .btn--ghost {
-    background: transparent;
-    color: var(--muted);
-    border-color: var(--border2);
-  }
-  .btn--ghost:hover { color: var(--text); border-color: var(--border2); }
-  .btn--outline {
-    background: transparent;
-    color: var(--text);
-    border-color: var(--border2);
-  }
-  .btn--outline:hover { border-color: var(--text); }
-  .btn--large {
-    font-size: 15px;
-    padding: 14px 32px;
-    border-radius: 11px;
-  }
-
-  /* --- INTEGRATIONS --- */
-  .integrations {
-    border-top: 1px solid var(--border);
-    border-bottom: 1px solid var(--border);
-    padding: 28px 48px;
-    display: flex;
-    align-items: center;
-    gap: 40px;
-    max-width: 1160px;
-    margin: 0 auto;
-  }
-  .integrations__label {
-    font-size: 11px;
-    color: var(--faint);
-    white-space: nowrap;
-    flex-shrink: 0;
-  }
-  .integrations__logos {
-    display: flex;
-    gap: 32px;
-    flex-wrap: wrap;
-  }
-  .integrations__logo {
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--faint);
-    letter-spacing: 0.3px;
+  .lp-ticker-item {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 14px 32px; font-size: 13px; font-weight: 500; color: var(--muted);
+    white-space: nowrap; border-right: 1px solid var(--bd);
     transition: color 0.2s;
   }
-  .integrations__logo:hover { color: var(--muted); }
+  .lp-ticker-item:hover { color: var(--text); }
+  .lp-ticker-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
 
-  /* --- EYEBROW --- */
-  .eyebrow {
-    display: block;
-    font-size: 11px;
-    font-weight: 500;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
-    color: var(--sage);
-    margin-bottom: 14px;
+  /* ── STATS ── */
+  .lp-stats-row {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    max-width: 1160px; margin: 0 auto; padding: 60px 48px;
+    gap: 0; border-bottom: 1px solid var(--bd);
   }
+  .lp-stat {
+    padding: 0 32px; border-right: 1px solid var(--bd);
+    opacity: 0; animation: none;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .lp-stat:first-child { padding-left: 0; }
+  .lp-stat:last-child { border-right: none; }
+  .lp-stat--in { opacity: 1; animation: lp-fade-up 0.7s both; }
+  .lp-stat-val { font-family: var(--mono); font-size: 36px; color: var(--text); font-weight: 400; letter-spacing: -1px; }
+  .lp-stat-label { font-size: 12px; color: var(--muted); }
 
-  /* --- FEATURES --- */
-  .features {
-    padding: 100px 48px;
-    max-width: 1160px;
-    margin: 0 auto;
+  /* ── SHARED SECTION STYLES ── */
+  .lp-tag {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 11px; font-weight: 600; letter-spacing: 1.3px;
+    text-transform: uppercase; color: var(--sage);
+    background: rgba(129,178,154,0.08); border: 1px solid rgba(129,178,154,0.2);
+    padding: 4px 12px; border-radius: 4px; margin-bottom: 20px;
   }
-  .features__header {
-    margin-bottom: 56px;
-  }
-  .features__header h2 {
+  .lp-tag-blue { color: var(--blue); background: rgba(108,122,184,0.08); border-color: rgba(108,122,184,0.2); }
+  .lp-section-head { text-align: center; margin-bottom: 56px; }
+  .lp-section-title {
     font-family: var(--serif);
-    font-size: clamp(32px, 3.5vw, 46px);
-    line-height: 1.1;
-    color: var(--text);
-    letter-spacing: -0.3px;
+    font-size: clamp(32px, 3.8vw, 52px);
+    line-height: 1.08; color: var(--text);
+    margin-bottom: 16px; letter-spacing: -0.4px;
   }
-  .features__grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1px;
-    background: var(--border);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    overflow: hidden;
+  .lp-section-title em { color: var(--sage); font-style: normal; }
+  .lp-section-sub { font-size: 15px; color: var(--muted); line-height: 1.7; max-width: 540px; margin: 0 auto; }
+
+  /* ── FEATURES ── */
+  .lp-features {
+    padding: 100px 48px; max-width: 1200px; margin: 0 auto;
   }
-  .feat {
-    background: var(--bg2);
-    padding: 32px;
-    position: relative;
+  .lp-feat-layout { display: flex; flex-direction: column; gap: 16px; }
+  .lp-feat-tabs {
+    display: flex; gap: 8px; flex-wrap: wrap;
+    background: var(--bg2); border: 1px solid var(--bd); border-radius: 12px; padding: 8px;
+  }
+  .lp-feat-tab {
+    flex: 1; min-width: 140px;
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 16px; background: none; border: 1px solid transparent;
+    border-radius: 8px; cursor: pointer; font-family: var(--sans);
+    font-size: 13px; font-weight: 500; color: var(--muted);
+    transition: all 0.18s; position: relative;
+    text-align: left;
+  }
+  .lp-feat-tab:hover { color: var(--text); background: rgba(255,255,255,0.04); }
+  .lp-feat-tab--active { color: var(--text); background: var(--bg3); }
+  .lp-feat-tab-icon {
+    width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
+    font-size: 15px; border-radius: 7px; background: var(--bg3); flex-shrink: 0;
     transition: background 0.2s;
-    cursor: default;
   }
-  .feat--active { background: var(--bg3); }
-  .feat__icon {
-    width: 36px; height: 36px;
-    border-radius: 9px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 16px;
-    margin-bottom: 16px;
-    color: var(--text);
+  .lp-feat-tab-bar {
+    position: absolute; bottom: 0; left: 8px; right: 8px; height: 2px; border-radius: 1px;
   }
-  .feat__title {
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--text);
-    margin-bottom: 8px;
-  }
-  .feat__body {
-    font-size: 13px;
-    color: var(--muted);
-    line-height: 1.65;
-    margin-bottom: 20px;
-  }
-  .feat__bar {
-    height: 2px;
-    background: var(--border);
-    border-radius: 2px;
-    overflow: hidden;
-  }
-  .feat__bar-fill {
-    height: 100%;
-    width: 0;
-    border-radius: 2px;
-    transition: width 0.6s ease;
-  }
-  .feat--active .feat__bar-fill { width: 100%; }
 
-  /* --- HOW IT WORKS --- */
-  .how {
-    padding: 100px 48px;
-    background: var(--bg2);
-    border-top: 1px solid var(--border);
-    border-bottom: 1px solid var(--border);
+  /* Feature panel */
+  .lp-feat-panel {
+    display: grid; grid-template-columns: 1fr 1.4fr;
+    gap: 40px; background: var(--bg2); border: 1px solid var(--bd);
+    border-radius: 16px; padding: 40px; align-items: center;
+    transition: border-color 0.3s;
+    animation: lp-fade-up 0.4s both;
   }
-  .how__inner {
-    max-width: 1160px;
-    margin: 0 auto;
+  .lp-feat-panel-icon {
+    width: 48px; height: 48px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; margin-bottom: 16px;
   }
-  .how h2 {
-    font-family: var(--serif);
-    font-size: clamp(30px, 3vw, 42px);
-    line-height: 1.1;
-    color: var(--text);
-    margin-bottom: 56px;
-    letter-spacing: -0.3px;
+  .lp-feat-panel-title {
+    font-size: 22px; font-weight: 700; color: var(--text);
+    margin-bottom: 12px; letter-spacing: -0.2px;
   }
-  .how__steps {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 0;
-    position: relative;
+  .lp-feat-panel-body { font-size: 14px; color: var(--muted); line-height: 1.7; margin-bottom: 20px; }
+  .lp-feat-panel-bullets { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+  .lp-feat-panel-bullets li {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 13px; color: var(--muted);
   }
-  .step {
-    padding-right: 32px;
-    position: relative;
+  .lp-feat-bullet-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .lp-feat-preview {
+    background: var(--bg3); border: 1px solid var(--bd2);
+    border-radius: 12px; padding: 20px; min-height: 240px;
+    transition: border-color 0.3s;
   }
-  .step__num {
-    width: 32px; height: 32px;
-    border-radius: 50%;
+
+  /* Preview components */
+  .lp-prev-bookings { display: flex; flex-direction: column; gap: 8px; }
+  .lp-prev-bk-row {
+    display: flex; justify-content: space-between; align-items: center;
+    background: var(--bg2); border: 1px solid var(--bd); border-radius: 8px; padding: 10px 12px;
+  }
+  .lp-prev-bk-left { display: flex; flex-direction: column; gap: 3px; }
+  .lp-prev-bk-guest { font-size: 13px; font-weight: 600; color: var(--text); }
+  .lp-prev-bk-meta { font-size: 10px; color: var(--muted); }
+  .lp-prev-bk-right { display: flex; align-items: center; gap: 10px; }
+  .lp-prev-bk-amt { font-size: 13px; font-weight: 600; color: var(--sage); font-family: var(--mono); }
+  .lp-prev-bk-status {
+    font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 4px;
+    text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .lp-prev-bk-paid    { background: rgba(129,178,154,0.15); color: var(--sage); }
+  .lp-prev-bk-partial { background: rgba(242,204,143,0.15); color: var(--amber); }
+  .lp-prev-bk-total {
+    display: flex; justify-content: space-between; font-size: 12px; color: var(--muted);
+    padding-top: 8px; border-top: 1px solid var(--bd);
+  }
+  .lp-prev-bk-total-val { color: var(--sage); font-weight: 700; font-family: var(--mono); }
+
+  /* Calendar preview */
+  .lp-prev-cal { display: flex; flex-direction: column; gap: 8px; }
+  .lp-prev-cal-nav { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); }
+  .lp-prev-cal-month { font-weight: 700; color: var(--text); }
+  .lp-prev-cal-dow { display: grid; grid-template-columns: repeat(7,1fr); }
+  .lp-prev-cal-dow-item { text-align: center; font-size: 9px; color: var(--faint); font-weight: 700; text-transform: uppercase; padding: 4px 0; }
+  .lp-prev-cal-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 2px; }
+  .lp-prev-day {
+    height: 28px; display: flex; align-items: center; justify-content: center;
+    font-size: 11px; color: var(--muted); border-radius: 4px; position: relative;
+  }
+  .lp-prev-day-bk::before {
+    content: ""; position: absolute; inset: 3px 0;
+    background: var(--dc, #81b29a); opacity: 0.22; z-index: 0; border-radius: 0;
+  }
+  .lp-prev-day-ci::before { border-radius: 50% 0 0 50%; left: 4px; }
+  .lp-prev-day-co::before { border-radius: 0 50% 50% 0; right: 4px; }
+  .lp-prev-day-bk { color: var(--text); position: relative; z-index: 1; }
+
+  /* Expense preview */
+  .lp-prev-expenses { display: flex; flex-direction: column; gap: 10px; }
+  .lp-prev-exp-nav { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); }
+  .lp-prev-exp-month { font-weight: 700; color: var(--text); }
+  .lp-prev-exp-stats { display: flex; gap: 12px; }
+  .lp-prev-exp-stat { display: flex; flex-direction: column; gap: 2px; background: var(--bg2); border: 1px solid var(--bd); border-radius: 8px; padding: 8px 12px; flex: 1; }
+  .lp-prev-exp-stat-val { font-size: 14px; font-weight: 700; color: var(--text); font-family: var(--mono); }
+  .lp-prev-exp-stat-label { font-size: 10px; color: var(--muted); }
+  .lp-prev-exp-row { display: flex; flex-direction: column; gap: 4px; }
+  .lp-prev-exp-row-top { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
+  .lp-prev-exp-amt { color: var(--coral); font-weight: 600; font-family: var(--mono); }
+  .lp-prev-exp-bar { height: 4px; background: var(--bd); border-radius: 2px; }
+  .lp-prev-exp-fill { height: 100%; background: var(--amber); border-radius: 2px; }
+
+  /* P&L preview */
+  .lp-prev-pnl { display: flex; flex-direction: column; gap: 6px; }
+  .lp-prev-pnl-card { background: var(--bg2); border: 1px solid var(--bd); border-radius: 8px; overflow: hidden; }
+  .lp-prev-pnl-open { border-color: rgba(129,178,154,0.3); }
+  .lp-prev-pnl-head {
+    display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+    font-size: 12px; flex-wrap: wrap;
+  }
+  .lp-prev-pnl-month { font-weight: 700; color: var(--text); flex: 1; }
+  .lp-prev-pnl-bk { color: var(--faint); font-size: 11px; }
+  .lp-prev-pnl-profit { color: var(--sage); font-weight: 700; font-family: var(--mono); font-size: 13px; }
+  .lp-prev-pnl-body { padding: 8px 14px 12px; border-top: 1px solid var(--bd); display: flex; flex-direction: column; gap: 5px; }
+  .lp-prev-pnl-row { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); }
+  .lp-prev-pnl-total { font-weight: 700; color: var(--text); border-top: 1px solid var(--bd); padding-top: 5px; margin-top: 2px; }
+  .lp-green { color: var(--sage) !important; font-family: var(--mono); }
+  .lp-red   { color: var(--coral) !important; font-family: var(--mono); }
+
+  /* ── VIDEO SECTION ── */
+  .lp-video-section {
+    padding: 100px 48px; background: var(--bg2);
+    border-top: 1px solid var(--bd); border-bottom: 1px solid var(--bd);
+  }
+  .lp-video-inner {
+    max-width: 900px; margin: 0 auto; text-align: center;
+    display: flex; flex-direction: column; align-items: center; gap: 0;
+  }
+  .lp-video-frame {
+    width: 100%; margin: 40px 0 32px;
+    border-radius: 20px; overflow: hidden;
+    border: 1px solid var(--bd2);
+    box-shadow: 0 32px 80px rgba(0,0,0,0.6);
     background: var(--bg3);
-    border: 1px solid var(--border2);
-    color: var(--sage);
-    font-size: 13px;
-    font-weight: 600;
-    font-family: var(--mono);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 20px;
     position: relative;
-    z-index: 1;
   }
-  .step__connector {
+  .lp-video-thumb {
+    position: relative; width: 100%; aspect-ratio: 16/9;
+    cursor: pointer; overflow: hidden;
+  }
+  .lp-video-thumb-bg {
+    width: 100%; height: 100%;
+    background: linear-gradient(135deg, #0e1020 0%, #111520 100%);
+    display: flex; flex-direction: column;
+  }
+  .lp-vthumb-header {
+    background: #06080e; padding: 8px 14px;
+    display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--bd);
+  }
+  .lp-vthumb-dots { display: flex; gap: 4px; }
+  .lp-vthumb-dots span { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); display: block; }
+  .lp-vthumb-url { font-family: var(--mono); font-size: 10px; color: var(--faint); }
+  .lp-vthumb-body { display: flex; flex: 1; }
+  .lp-vthumb-sidebar {
+    width: 100px; background: #07090d; border-right: 1px solid var(--bd);
+    padding: 12px 8px; display: flex; flex-direction: column; gap: 4px;
+  }
+  .lp-vthumb-brand { font-size: 8px; font-weight: 700; color: var(--text); opacity: 0.6; padding-bottom: 8px; border-bottom: 1px solid var(--bd); margin-bottom: 4px; }
+  .lp-vthumb-prop { font-size: 8px; color: var(--muted); padding: 4px 6px; border-radius: 4px; }
+  .lp-vthumb-prop-active { background: rgba(129,178,154,0.12); color: var(--sage); }
+  .lp-vthumb-main { flex: 1; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+  .lp-vthumb-kpis { display: flex; gap: 6px; }
+  .lp-vthumb-tab { flex: 1; background: var(--bd); border-radius: 4px; padding: 6px 8px; font-size: 8px; color: var(--muted); text-align: center; }
+  .lp-vthumb-months { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+  .lp-vthumb-month-row { display: flex; align-items: center; gap: 8px; }
+  .lp-vthumb-month-name { font-size: 8px; color: var(--muted); width: 24px; flex-shrink: 0; }
+  .lp-vthumb-month-bar-wrap { flex: 1; height: 6px; background: var(--bd); border-radius: 3px; overflow: hidden; }
+  .lp-vthumb-month-bar { height: 100%; border-radius: 3px; background: var(--sage); opacity: 0.6; }
+  .lp-vthumb-month-pnl { font-size: 9px; font-weight: 700; width: 40px; text-align: right; }
+  /* Play button */
+  .lp-play-btn {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    background: rgba(0,0,0,0.5); border: none; cursor: pointer;
+    transition: background 0.2s;
+  }
+  .lp-play-btn:hover { background: rgba(0,0,0,0.35); }
+  .lp-play-btn:hover .lp-play-ring { transform: scale(1.08); }
+  .lp-play-ring {
     position: absolute;
-    top: 15px;
-    left: calc(32px + 8px);
-    right: 0;
-    height: 1px;
-    background: repeating-linear-gradient(
-      90deg,
-      var(--border2) 0,
-      var(--border2) 5px,
-      transparent 5px,
-      transparent 12px
-    );
+    width: 72px; height: 72px; border-radius: 50%;
+    background: rgba(129,178,154,0.9); backdrop-filter: blur(4px);
+    transition: transform 0.2s;
+    box-shadow: 0 8px 32px rgba(129,178,154,0.4);
   }
-  .step__content h3 {
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--text);
-    margin-bottom: 8px;
+  .lp-play-btn svg { position: relative; z-index: 1; margin-left: 4px; }
+  .lp-video-label {
+    position: absolute; bottom: 16px; left: 16px;
+    display: flex; align-items: center; gap: 7px;
+    background: rgba(0,0,0,0.7); backdrop-filter: blur(6px);
+    border: 1px solid var(--bd2); border-radius: 6px; padding: 5px 12px;
+    font-size: 11px; color: var(--muted);
   }
-  .step__content p {
-    font-size: 13px;
-    color: var(--muted);
-    line-height: 1.6;
+  .lp-video-label-dot { width: 6px; height: 6px; border-radius: 50%; background: #e07a5f; animation: pulse 1.5s ease-in-out infinite; }
+  .lp-video-iframe { width: 100%; aspect-ratio: 16/9; border: none; display: block; }
+  .lp-video-points {
+    display: flex; gap: 24px; flex-wrap: wrap; justify-content: center;
+    font-size: 13px; color: var(--muted);
+  }
+  .lp-video-point { display: flex; align-items: center; gap: 8px; }
+  .lp-video-point-icon { font-size: 14px; }
+
+  /* ── MONTHLY P&L SECTION ── */
+  .lp-pnl-section {
+    padding: 100px 48px; max-width: 1200px; margin: 0 auto;
+  }
+  .lp-pnl-inner {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: start;
+  }
+  .lp-pnl-sub { font-size: 14px; color: var(--muted); line-height: 1.75; margin-bottom: 28px; }
+  .lp-pnl-bullets { display: flex; flex-direction: column; gap: 12px; }
+  .lp-pnl-bullet { display: flex; align-items: flex-start; gap: 12px; font-size: 13px; color: var(--muted); }
+  .lp-pnl-bullet-check {
+    width: 20px; height: 20px; border-radius: 50%; background: rgba(129,178,154,0.15);
+    color: var(--sage); font-size: 11px; display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; margin-top: 1px;
+  }
+  .lp-months-demo {
+    background: var(--bg2); border: 1px solid var(--bd2); border-radius: 16px; overflow: hidden;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.4);
+  }
+  .lp-months-header {
+    padding: 14px 20px; background: var(--bg3); border-bottom: 1px solid var(--bd);
+    font-size: 12px; font-weight: 700; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.9px;
+  }
+  .lp-month-card {
+    border-bottom: 1px solid var(--bd); cursor: pointer;
+    transition: background 0.15s, border-color 0.2s;
+    border-left: 3px solid transparent;
+  }
+  .lp-month-card:hover { background: rgba(255,255,255,0.02); }
+  .lp-month-card-open { background: rgba(129,178,154,0.04); border-left-color: var(--sage); }
+  .lp-month-head {
+    display: flex; align-items: center; gap: 10px; padding: 14px 20px; flex-wrap: wrap;
+  }
+  .lp-month-head-left { display: flex; align-items: center; gap: 8px; flex: 1; flex-wrap: wrap; }
+  .lp-month-name { font-size: 14px; font-weight: 700; color: var(--text); }
+  .lp-month-badge {
+    font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 4px;
+    background: rgba(129,178,154,0.15); color: var(--sage); letter-spacing: 0.5px;
+  }
+  .lp-month-bk { font-size: 11px; color: var(--faint); }
+  .lp-month-head-right { display: flex; align-items: center; gap: 8px; font-size: 13px; flex-shrink: 0; }
+  .lp-month-rev  { color: var(--sage); font-family: var(--mono); font-weight: 600; }
+  .lp-month-cost { color: var(--coral); font-family: var(--mono); font-weight: 600; }
+  .lp-month-profit { font-weight: 800; font-family: var(--mono); font-size: 14px; }
+  .lp-month-dash { color: var(--faint); }
+  .lp-month-chevron { font-size: 9px; color: var(--faint); }
+  .lp-month-body { padding: 0 20px 14px; border-top: 1px solid var(--bd); display: flex; flex-direction: column; gap: 6px; margin-top: 0; }
+  .lp-month-detail-row { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); padding-top: 6px; }
+  .lp-month-detail-total { font-weight: 700; color: var(--text); border-top: 1px solid var(--bd); padding-top: 8px; }
+  .lp-month-green { color: var(--sage); font-family: var(--mono); }
+  .lp-month-red   { color: var(--coral); font-family: var(--mono); }
+  .lp-months-footer {
+    display: flex; justify-content: space-between; padding: 12px 20px;
+    font-size: 11px; color: var(--faint); background: var(--bg3);
+  }
+  .lp-months-profit { color: var(--sage); font-weight: 600; }
+
+  /* ── HOW IT WORKS ── */
+  .lp-how { padding: 100px 48px; background: var(--bg2); border-top: 1px solid var(--bd); border-bottom: 1px solid var(--bd); }
+  .lp-how-inner { max-width: 1160px; margin: 0 auto; text-align: center; display: flex; flex-direction: column; align-items: center; }
+  .lp-steps {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 0;
+    position: relative; width: 100%; margin-top: 60px;
+  }
+  .lp-step { padding: 0 24px 0 0; position: relative; text-align: left; }
+  .lp-step-num {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--sage), #4a7a62);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono); font-size: 14px; font-weight: 700; color: #0b0c10;
+    margin-bottom: 16px; position: relative; z-index: 1;
+    box-shadow: 0 0 0 6px rgba(129,178,154,0.12);
+  }
+  .lp-step-line {
+    position: absolute; top: 20px; left: 40px; right: 24px; height: 1px;
+    background: repeating-linear-gradient(90deg, var(--bd2) 0, var(--bd2) 5px, transparent 5px, transparent 12px);
+    z-index: 0;
+  }
+  .lp-step-icon { font-size: 24px; margin-bottom: 12px; }
+  .lp-step-title { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+  .lp-step-body { font-size: 13px; color: var(--muted); line-height: 1.65; }
+
+  /* ── iCal SECTION ── */
+  .lp-ical-section { padding: 100px 48px; max-width: 1200px; margin: 0 auto; }
+  .lp-ical-inner {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: center;
+  }
+  .lp-ical-body { font-size: 14px; color: var(--muted); line-height: 1.75; margin-bottom: 28px; }
+  .lp-ical-platforms { display: flex; flex-wrap: wrap; gap: 8px; }
+  .lp-ical-platform {
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px 12px; border-radius: 6px; border: 1px solid;
+    font-size: 12px; font-weight: 600;
+  }
+  .lp-ical-platform-dot { width: 6px; height: 6px; border-radius: 50%; }
+  .lp-ical-card {
+    background: var(--bg2); border: 1px solid var(--bd2); border-radius: 16px; overflow: hidden;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.4);
+  }
+  .lp-ical-card-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 20px; background: var(--bg3); border-bottom: 1px solid var(--bd);
+    font-size: 13px; font-weight: 700; color: var(--text);
+  }
+  .lp-ical-card-tag {
+    font-size: 10px; font-weight: 600; color: var(--sage);
+    background: rgba(129,178,154,0.12); border: 1px solid rgba(129,178,154,0.2);
+    padding: 3px 9px; border-radius: 4px;
+  }
+  .lp-ical-src {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 20px; border-bottom: 1px solid var(--bd);
+    transition: background 0.15s;
+  }
+  .lp-ical-src:last-of-type { border-bottom: none; }
+  .lp-ical-src:hover { background: rgba(255,255,255,0.02); }
+  .lp-ical-src-left { display: flex; align-items: center; gap: 12px; }
+  .lp-ical-src-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .lp-ical-src-name { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+  .lp-ical-src-url { font-size: 10px; color: var(--faint); font-family: var(--mono); }
+  .lp-ical-src-right { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+  .lp-ical-src-count { font-size: 11px; color: var(--muted); }
+  .lp-ical-src-status { font-size: 11px; color: var(--sage); font-weight: 600; }
+  .lp-ical-result {
+    padding: 12px 20px; background: rgba(129,178,154,0.06); border-top: 1px solid rgba(129,178,154,0.2);
+    font-size: 12px; color: var(--sage); font-weight: 600;
   }
 
-  /* --- CALLOUT SECTION --- */
-  .callout {
-    padding: 100px 48px;
-    max-width: 1160px;
-    margin: 0 auto;
+  /* ── FINAL CTA ── */
+  .lp-finale {
+    padding: 140px 48px; text-align: center;
+    position: relative; overflow: hidden;
   }
-  .callout__inner {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 80px;
-    align-items: center;
+  .lp-finale-blob {
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse 60% 50% at 50% 50%, rgba(129,178,154,0.1) 0%, transparent 70%);
+    pointer-events: none;
   }
-  .callout__tag {
-    display: inline-block;
-    font-size: 10px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 1.2px;
-    color: var(--coral);
-    background: rgba(224,122,95,0.1);
-    border: 1px solid rgba(224,122,95,0.2);
-    padding: 4px 10px;
-    border-radius: 4px;
-    margin-bottom: 24px;
+  .lp-finale-inner { position: relative; z-index: 1; }
+  .lp-finale-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase;
+    color: var(--sage); border: 1px solid rgba(129,178,154,0.25);
+    padding: 6px 16px; border-radius: 20px; margin-bottom: 32px;
+    background: rgba(129,178,154,0.06);
   }
-  .callout__headline {
-    font-family: var(--serif);
-    font-size: clamp(30px, 3vw, 40px);
-    line-height: 1.15;
-    color: var(--text);
-    margin-bottom: 20px;
-    letter-spacing: -0.3px;
+  .lp-finale-headline {
+    font-family: var(--serif); font-size: clamp(38px, 5vw, 64px);
+    line-height: 1.06; color: var(--text); margin-bottom: 20px; letter-spacing: -0.5px;
   }
-  .callout__headline em {
-    color: var(--coral);
-    font-style: inherit;
+  .lp-finale-headline em { color: var(--sage); font-style: normal; }
+  .lp-finale-sub { font-size: 16px; color: var(--muted); margin-bottom: 44px; }
+  .lp-finale-note { font-size: 13px; color: var(--faint); margin-top: 20px; }
+
+  /* ── FOOTER ── */
+  .lp-footer { border-top: 1px solid var(--bd); padding: 28px 48px; }
+  .lp-footer-inner {
+    max-width: 1160px; margin: 0 auto;
+    display: flex; align-items: center; gap: 32px;
   }
-  .callout__body {
-    font-size: 14px;
-    color: var(--muted);
-    line-height: 1.7;
-    margin-bottom: 32px;
+  .lp-footer-brand {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 14px; font-weight: 600; color: var(--text); margin-right: auto;
   }
-  .callout__card {
-    background: var(--bg2);
-    border: 1px solid var(--border2);
-    border-radius: 14px;
-    padding: 28px;
-  }
-  .callout__card-label {
-    font-size: 11px;
-    color: var(--muted);
-    margin-bottom: 8px;
-  }
-  .callout__card-num {
-    font-family: var(--mono);
-    font-size: 42px;
-    font-weight: 400;
-    color: var(--coral);
-    margin-bottom: 6px;
-    letter-spacing: -1px;
-  }
-  .callout__card-detail {
-    font-size: 12px;
-    color: var(--faint);
-    margin-bottom: 28px;
-  }
-  .callout__months {
-    display: flex;
-    align-items: flex-end;
-    gap: 8px;
-    height: 60px;
-    margin-bottom: 8px;
-  }
-  .callout__month {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    height: 100%;
-    justify-content: flex-end;
-  }
-  .callout__month-bar {
-    width: 100%;
-    background: rgba(224,122,95,0.3);
-    border-radius: 3px 3px 0 0;
-    transition: background 0.2s;
-  }
-  .callout__month:hover .callout__month-bar {
-    background: var(--coral);
-  }
-  .callout__month span {
-    font-size: 9px;
-    color: var(--faint);
-    font-family: var(--mono);
-  }
-  .callout__card-sub {
-    font-size: 10px;
-    color: var(--faint);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-top: 4px;
+  .lp-footer-links { display: flex; gap: 24px; }
+  .lp-footer-links a { font-size: 12px; color: var(--faint); text-decoration: none; transition: color 0.15s; }
+  .lp-footer-links a:hover { color: var(--muted); }
+  .lp-footer-copy { font-size: 12px; color: var(--faint); }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 960px) {
+    .lp-nav { padding: 16px 24px; }
+    .lp-nav--stuck { padding: 12px 24px; }
+    .lp-nav-links { display: none; }
+    .lp-hero { padding: 120px 24px 80px; }
+    .lp-hero-inner { grid-template-columns: 1fr; gap: 48px; }
+    .lp-hero-right { order: -1; }
+    .lp-chip-1, .lp-chip-3 { display: none; }
+    .lp-stats-row { grid-template-columns: repeat(2,1fr); padding: 40px 24px; gap: 0; }
+    .lp-stat { padding: 20px 24px; border-right: none; border-bottom: 1px solid var(--bd); }
+    .lp-stat:nth-child(odd) { border-right: 1px solid var(--bd); }
+    .lp-stat:last-child, .lp-stat:nth-last-child(2) { border-bottom: none; }
+    .lp-features { padding: 60px 24px; }
+    .lp-feat-tabs { flex-direction: column; }
+    .lp-feat-panel { grid-template-columns: 1fr; padding: 24px; }
+    .lp-video-section { padding: 60px 24px; }
+    .lp-pnl-section { padding: 60px 24px; }
+    .lp-pnl-inner { grid-template-columns: 1fr; gap: 40px; }
+    .lp-how { padding: 60px 24px; }
+    .lp-steps { grid-template-columns: 1fr; gap: 32px; margin-top: 40px; }
+    .lp-step-line { display: none; }
+    .lp-step { padding: 0; }
+    .lp-ical-section { padding: 60px 24px; }
+    .lp-ical-inner { grid-template-columns: 1fr; gap: 40px; }
+    .lp-finale { padding: 80px 24px; }
+    .lp-footer { padding: 24px; }
+    .lp-footer-inner { flex-wrap: wrap; gap: 16px; }
+    .lp-ticker-item { padding: 14px 20px; }
   }
 
-  /* --- PRICING --- */
-  .pricing {
-    padding: 100px 48px;
-    background: var(--bg2);
-    border-top: 1px solid var(--border);
-    border-bottom: 1px solid var(--border);
-  }
-  .pricing__header {
-    max-width: 1160px;
-    margin: 0 auto 56px;
-  }
-  .pricing__header h2 {
-    font-family: var(--serif);
-    font-size: clamp(30px, 3vw, 44px);
-    color: var(--text);
-    letter-spacing: -0.3px;
-    margin-bottom: 8px;
-  }
-  .pricing__header p {
-    font-size: 14px;
-    color: var(--muted);
-  }
-  .pricing__grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 20px;
-    max-width: 1160px;
-    margin: 0 auto;
-  }
-  .plan {
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 32px;
-    position: relative;
-    transition: border-color 0.2s;
-  }
-  .plan:hover { border-color: var(--border2); }
-  .plan--featured {
-    background: var(--bg);
-    border-color: var(--sage-dim);
-  }
-  .plan__badge {
-    display: inline-block;
-    font-size: 10px;
-    font-weight: 600;
-    letter-spacing: 0.8px;
-    text-transform: uppercase;
-    background: var(--sage);
-    color: #0e0f13;
-    padding: 3px 10px;
-    border-radius: 4px;
-    margin-bottom: 16px;
-  }
-  .plan__name {
-    font-size: 11px;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 1.2px;
-    color: var(--muted);
-    margin-bottom: 12px;
-  }
-  .plan__price {
-    display: flex;
-    align-items: baseline;
-    gap: 4px;
-    margin-bottom: 8px;
-  }
-  .plan__amount {
-    font-family: var(--mono);
-    font-size: 40px;
-    font-weight: 400;
-    color: var(--text);
-    letter-spacing: -1px;
-  }
-  .plan__per {
-    font-size: 13px;
-    color: var(--muted);
-  }
-  .plan__desc {
-    font-size: 12px;
-    color: var(--faint);
-    margin-bottom: 24px;
-  }
-  .plan__features {
-    list-style: none;
-    margin-bottom: 28px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-  .plan__features li {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    font-size: 13px;
-    color: var(--muted);
-  }
-  .plan__check {
-    color: var(--sage);
-    font-size: 11px;
-    flex-shrink: 0;
-    margin-top: 2px;
-  }
-  .plan__btn { width: 100%; justify-content: center; }
-  .pricing__note {
-    text-align: center;
-    font-size: 12px;
-    color: var(--faint);
-    margin-top: 24px;
-    max-width: 1160px;
-    margin-left: auto;
-    margin-right: auto;
-  }
-
-  /* --- FINALE --- */
-  .finale {
-    padding: 120px 48px;
-    text-align: center;
-    position: relative;
-    overflow: hidden;
-  }
-  .finale__inner { position: relative; z-index: 1; }
-  .finale__headline {
-    font-family: var(--serif);
-    font-size: clamp(34px, 4vw, 56px);
-    line-height: 1.1;
-    color: var(--text);
-    margin-bottom: 16px;
-    letter-spacing: -0.5px;
-  }
-  .finale__sub {
-    font-size: 15px;
-    color: var(--muted);
-    margin-bottom: 36px;
-  }
-
-  /* --- FOOTER --- */
-  .footer {
-    border-top: 1px solid var(--border);
-    padding: 28px 48px;
-  }
-  .footer__inner {
-    max-width: 1160px;
-    margin: 0 auto;
-    display: flex;
-    align-items: center;
-    gap: 32px;
-  }
-  .footer__brand {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--text);
-    margin-right: auto;
-  }
-  .footer__links {
-    display: flex;
-    gap: 24px;
-  }
-  .footer__links a {
-    font-size: 12px;
-    color: var(--faint);
-    text-decoration: none;
-    transition: color 0.15s;
-  }
-  .footer__links a:hover { color: var(--muted); }
-  .footer__copy {
-    font-size: 12px;
-    color: var(--faint);
-    margin-left: 24px;
-  }
-
-  /* --- RESPONSIVE --- */
-  @media (max-width: 900px) {
-    .nav { padding: 16px 24px; }
-    .nav--stuck { padding: 12px 24px; }
-    .nav__links { display: none; }
-    .hero { grid-template-columns: 1fr; padding: 120px 24px 60px; gap: 40px; }
-    .hero__visual { order: -1; }
-    .hero__tag--1 { display: none; }
-    .hero__tag--2 { display: none; }
-    .features { padding: 60px 24px; }
-    .features__grid { grid-template-columns: 1fr; gap: 0; }
-    .how { padding: 60px 24px; }
-    .how__steps { grid-template-columns: 1fr; gap: 32px; }
-    .step__connector { display: none; }
-    .callout { padding: 60px 24px; }
-    .callout__inner { grid-template-columns: 1fr; gap: 40px; }
-    .pricing { padding: 60px 24px; }
-    .pricing__grid { grid-template-columns: 1fr; }
-    .finale { padding: 80px 24px; }
-    .footer { padding: 24px; }
-    .footer__inner { flex-wrap: wrap; gap: 16px; }
-    .integrations { padding: 24px; flex-direction: column; align-items: flex-start; gap: 16px; }
+  @media (max-width: 600px) {
+    .lp-hero-actions { flex-direction: column; align-items: flex-start; }
+    .lp-month-head { flex-direction: column; align-items: flex-start; gap: 8px; }
+    .lp-month-head-right { width: 100%; justify-content: space-between; }
+    .lp-feat-panel-left { order: 2; }
+    .lp-feat-panel-right { order: 1; }
+    .lp-video-points { gap: 12px; }
   }
 `;
