@@ -151,6 +151,7 @@ export default function DashboardPage() {
           <ListingDashboard
             key={currentListing.id}
             listing={currentListing}
+            uid={user.uid}
             onOpenSidebar={() => setSidebarOpen(true)}
             onUpdateListing={(updates) => updateListing(currentListing.id, updates)}
             onDeleteListing={() => deleteListing(currentListing.id)}
@@ -166,7 +167,7 @@ export default function DashboardPage() {
             </button>
             <div className="no-listing-content">
               <span className="no-listing-icon">🏠</span>
-              <h2>Welcome to HostLedger</h2>
+              <h2>Welcome to Tractar</h2>
               <p>
                 Add your first property from the sidebar to start tracking
                 revenue, expenses, and profitability.

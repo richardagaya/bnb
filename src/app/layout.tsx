@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "HostLedger — Short-term rental intelligence",
+  title: "Tractar — Short-term rental intelligence",
   description:
     "Track revenue, expenses, and profitability for every property you host.",
 };

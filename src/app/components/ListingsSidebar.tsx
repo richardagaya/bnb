@@ -64,7 +64,7 @@ export default function ListingsSidebar({
       <div className="sidebar-header">
         <div className="sidebar-logo">
           <span className="logo-icon">⌂</span>
-          <span className="logo-text">HostLedger</span>
+          <span className="logo-text">Tractar</span>
         </div>
         <p className="sidebar-subtitle">Your Properties</p>
         {/* Close button — mobile only */}

@@ -1,5 +1,5 @@
 /**
- * Firestore CRUD helpers for HostLedger.
+ * Firestore CRUD helpers for Tractar.
  *
  * Data model:
  *   users/{uid}                          – user profile
@@ -50,11 +50,40 @@ export type FinancialData = {
 
 export type Expense = {
   id: string;
-  category: string;
-  amount: number;
-  description: string;
   date: string;
-  createdAt?: Timestamp;
+  category: string;
+  description: string;
+  amount: number;
+  recurring: boolean;
+  period?: "monthly" | "one-time";
+  receipt?: string;
+};
+
+export type FSBooking = {
+  id: string;
+  guestName: string;
+  checkIn: string;
+  checkOut: string;
+  nights: number;
+  source: string;
+  status: string;
+  paymentStatus: string;
+  chargeAmount: number;
+  discountAmount: number;
+  amountPaid: number;
+  notes: string;
+  createdAt: string;
+};
+
+export type FSCalendarSource = {
+  id: string;
+  platform: string;
+  url: string;
+  color: string;
+  lastSynced: string | null;
+  status: "synced" | "error" | "pending";
+  lastSyncCount?: number;
+  lastSyncError?: string;
 };
 
 export type CalendarEvent = {
@@ -137,16 +166,49 @@ export async function getExpenses(uid: string, listingId: string): Promise<Expen
   return snap.docs.map((d) => ({ id: d.id, ...d.data() } as Expense));
 }
 
-export async function addExpense(uid: string, listingId: string, expense: Omit<Expense, "id" | "createdAt">): Promise<string> {
-  const ref = await addDoc(collection(db, "users", uid, "expenses", listingId, "items"), {
-    ...expense,
-    createdAt: serverTimestamp(),
-  });
+export async function addExpense(uid: string, listingId: string, expense: Omit<Expense, "id">): Promise<string> {
+  const ref = await addDoc(collection(db, "users", uid, "expenses", listingId, "items"), expense);
   return ref.id;
 }
 
 export async function deleteExpense(uid: string, listingId: string, expenseId: string) {
   await deleteDoc(doc(db, "users", uid, "expenses", listingId, "items", expenseId));
+}
+
+// ─── Bookings ─────────────────────────────────────────────────────────────────
+
+export async function getBookings(uid: string, listingId: string): Promise<FSBooking[]> {
+  const snap = await getDocs(collection(db, "users", uid, "bookings", listingId, "items"));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as FSBooking));
+}
+
+export async function addBooking(uid: string, listingId: string, booking: Omit<FSBooking, "id">): Promise<string> {
+  const ref = await addDoc(collection(db, "users", uid, "bookings", listingId, "items"), booking);
+  return ref.id;
+}
+
+export async function updateBooking(uid: string, listingId: string, bookingId: string, updates: Partial<Omit<FSBooking, "id">>) {
+  await updateDoc(doc(db, "users", uid, "bookings", listingId, "items", bookingId), updates);
+}
+
+export async function deleteBooking(uid: string, listingId: string, bookingId: string) {
+  await deleteDoc(doc(db, "users", uid, "bookings", listingId, "items", bookingId));
+}
+
+// ─── Calendar Sources ─────────────────────────────────────────────────────────
+
+export async function getCalendarSources(uid: string, listingId: string): Promise<FSCalendarSource[]> {
+  const snap = await getDoc(doc(db, "users", uid, "calendarSources", listingId));
+  if (!snap.exists()) return [];
+  const data = snap.data();
+  return Array.isArray(data?.sources) ? (data.sources as FSCalendarSource[]) : [];
+}
+
+export async function setCalendarSources(uid: string, listingId: string, sources: FSCalendarSource[]) {
+  await setDoc(doc(db, "users", uid, "calendarSources", listingId), {
+    sources,
+    updatedAt: serverTimestamp(),
+  });
 }
 
 // ─── Calendar Events ──────────────────────────────────────────────────────────

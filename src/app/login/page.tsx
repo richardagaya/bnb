@@ -101,15 +101,15 @@ function LoginForm() {
     <div className="login-shell">
       <div className="login-card">
         <Link href="/" className="login-logo">
-          <span className="login-logo-mark">H</span>
-          HostLedger
+          <span className="login-logo-mark">T</span>
+          Tractar
         </Link>
 
         <h1 className="login-title">{title}</h1>
 
         {mode === "sign-in" && (
           <p className="login-sub">
-            Sign in to your HostLedger account.
+            Sign in to your Tractar account.
           </p>
         )}
         {mode === "sign-up" && (

@@ -72,7 +72,7 @@ export default function LandingPage() {
       {/* ── NAV ── */}
       <nav className={`lp-nav ${scrolled ? "lp-nav--stuck" : ""}`}>
         <a href="/" className="lp-logo">
-          <span className="lp-logo-mark">H</span>HostLedger
+          <span className="lp-logo-mark">T</span>Tractar
         </a>
         <ul className="lp-nav-links">
           <li><a href="#features">Features</a></li>
@@ -133,7 +133,7 @@ export default function LandingPage() {
                   <span key={i} className="lp-avatar" style={{ background: c }} />
                 ))}
               </div>
-              <span className="lp-trust-text">2,400+ hosts trust HostLedger</span>
+              <span className="lp-trust-text">2,400+ hosts trust Tractar</span>
             </div>
           </div>
 
@@ -143,12 +143,12 @@ export default function LandingPage() {
               <div className="lp-mockup-bar">
                 <span className="lp-dot lp-dot-r"/><span className="lp-dot lp-dot-y"/>
                 <span className="lp-dot lp-dot-g"/>
-                <span className="lp-mockup-url">hostledger.app/dashboard</span>
+                <span className="lp-mockup-url">tractar.app/dashboard</span>
               </div>
               <div className="lp-mockup-body">
                 {/* Sidebar */}
                 <div className="lp-mock-sidebar">
-                  <p className="lp-mock-brand">⌂ HostLedger</p>
+                  <p className="lp-mock-brand">⌂ Tractar</p>
                   <button className="lp-mock-prop lp-mock-prop-active">Downtown Loft</button>
                   <button className="lp-mock-prop">Beach Villa</button>
                   <button className="lp-mock-prop">Studio 4B</button>
@@ -333,11 +333,11 @@ export default function LandingPage() {
                       <div className="lp-vthumb-dots">
                         <span/><span/><span/>
                       </div>
-                      <span className="lp-vthumb-url">hostledger.app/dashboard</span>
+                      <span className="lp-vthumb-url">tractar.app/dashboard</span>
                     </div>
                     <div className="lp-vthumb-body">
                       <div className="lp-vthumb-sidebar">
-                        <div className="lp-vthumb-brand">⌂ HostLedger</div>
+                        <div className="lp-vthumb-brand">⌂ Tractar</div>
                         <div className="lp-vthumb-prop lp-vthumb-prop-active">Downtown Loft</div>
                         <div className="lp-vthumb-prop">Beach Villa</div>
                         <div className="lp-vthumb-prop">Studio 4B</div>
@@ -383,7 +383,7 @@ export default function LandingPage() {
               <iframe
                 className="lp-video-iframe"
                 src="https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1&rel=0&modestbranding=1"
-                title="HostLedger product demo"
+                title="Tractar product demo"
                 allow="autoplay; fullscreen"
                 allowFullScreen
               />
@@ -521,7 +521,7 @@ export default function LandingPage() {
             </h2>
             <p className="lp-ical-body">
               Copy the iCal export URL from Airbnb, Booking.com, or VRBO.
-              HostLedger fetches it on the server, parses every reservation,
+              Tractar fetches it on the server, parses every reservation,
               and drops them straight into your calendar and monthly P&amp;L —
               no manual entry, no duplicates, no CORS headaches.
             </p>
@@ -599,14 +599,14 @@ export default function LandingPage() {
         <div className="lp-footer-inner">
           <div className="lp-footer-brand">
             <span className="lp-logo-mark">H</span>
-            <span>HostLedger</span>
+            <span>Tractar</span>
           </div>
           <nav className="lp-footer-links">
             <a href="#">Privacy</a>
             <a href="#">Terms</a>
             <a href="#">Contact</a>
           </nav>
-          <p className="lp-footer-copy">© 2026 HostLedger. All rights reserved.</p>
+          <p className="lp-footer-copy">© 2026 Tractar. All rights reserved.</p>
         </div>
       </footer>
     </>

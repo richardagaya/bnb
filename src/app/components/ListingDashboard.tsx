@@ -1,11 +1,25 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import CalendarSync, { CalendarSource } from "./CalendarSync";
 import FinancialCalculator, { FinancialData } from "./FinancialCalculator";
 import ExpenseTracker, { Expense } from "./ExpenseTracker";
 import BookingTracker, { Booking } from "./BookingTracker";
 import { Listing } from "./ListingsSidebar";
+import {
+  getFinancialData,
+  setFinancialData as fsSetFinancialData,
+  getExpenses,
+  addExpense as fsAddExpense,
+  deleteExpense as fsDeleteExpense,
+  getBookings,
+  addBooking as fsAddBooking,
+  updateBooking as fsUpdateBooking,
+  deleteBooking as fsDeleteBooking,
+  getCalendarSources,
+  setCalendarSources as fsSetCalendarSources,
+  type FSCalendarSource,
+} from "@/lib/firestore";
 
 /** Safely read a JSON value from localStorage, returning fallback on any error. */
 function fromStorage<T>(key: string, fallback: T): T {
@@ -20,6 +34,7 @@ function fromStorage<T>(key: string, fallback: T): T {
 
 interface ListingDashboardProps {
   listing: Listing;
+  uid: string;
   onOpenSidebar?: () => void;
   onUpdateListing?: (updates: Partial<Omit<Listing, "id">>) => void;
   onDeleteListing?: () => void;
@@ -69,6 +84,7 @@ const LISTING_TYPES = [
 
 export default function ListingDashboard({
   listing,
+  uid,
   onOpenSidebar,
   onUpdateListing,
   onDeleteListing,
@@ -90,6 +106,7 @@ export default function ListingDashboard({
   });
 
   // ── Per-listing persisted state ──
+  // Initialised from localStorage for an instant render; overwritten by Firestore once loaded.
   const [financialData, setFinancialData] = useState<FinancialData>(() =>
     fromStorage(`bnb_fin_${listing.id}`, DEFAULT_FINANCIAL_DATA)
   );
@@ -103,7 +120,77 @@ export default function ListingDashboard({
     fromStorage(`bnb_cal_${listing.id}`, [])
   );
 
-  // Persist whenever data changes
+  // True once the initial Firestore load has settled (success or error).
+  const fsLoaded = useRef(false);
+  // Timer ref for debouncing financial-data saves.
+  const finSaveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  // Timer ref for debouncing calendar-source saves.
+  const calSaveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  // ── Load from Firestore on mount ──────────────────────────────────────────
+  useEffect(() => {
+    let cancelled = false;
+
+    Promise.all([
+      getFinancialData(uid, listing.id),
+      getExpenses(uid, listing.id),
+      getBookings(uid, listing.id),
+      getCalendarSources(uid, listing.id),
+    ])
+      .then(([fsFin, fsExp, fsBkn, fsCal]) => {
+        if (cancelled) return;
+
+        if (fsFin && Object.keys(fsFin).length > 0) {
+          setFinancialData(fsFin as unknown as FinancialData);
+        } else {
+          // Migrate localStorage → Firestore if Firestore is empty
+          const localFin = fromStorage(`bnb_fin_${listing.id}`, null as FinancialData | null);
+          if (localFin) fsSetFinancialData(uid, listing.id, localFin as unknown as Record<string, unknown>).catch(() => {});
+        }
+
+        if (fsExp.length > 0) {
+          setExpenses(fsExp as Expense[]);
+        } else {
+          const localExp = fromStorage<Expense[]>(`bnb_exp_${listing.id}`, []);
+          if (localExp.length > 0) {
+            localExp.forEach(({ id: _id, ...rest }) => {
+              fsAddExpense(uid, listing.id, rest).catch(() => {});
+            });
+          }
+        }
+
+        if (fsBkn.length > 0) {
+          setBookings(fsBkn as Booking[]);
+        } else {
+          const localBkn = fromStorage<Booking[]>(`bnb_bkn_${listing.id}`, []);
+          if (localBkn.length > 0) {
+            localBkn.forEach(({ id: _id, ...rest }) => {
+              fsAddBooking(uid, listing.id, rest).catch(() => {});
+            });
+          }
+        }
+
+        if (fsCal.length > 0) {
+          setCalendarSources(fsCal as CalendarSource[]);
+        } else {
+          const localCal = fromStorage<CalendarSource[]>(`bnb_cal_${listing.id}`, []);
+          if (localCal.length > 0) {
+            fsSetCalendarSources(uid, listing.id, localCal as FSCalendarSource[]).catch(() => {});
+          }
+        }
+      })
+      .catch(() => {
+        // Network/permission error — keep showing localStorage data
+      })
+      .finally(() => {
+        if (!cancelled) fsLoaded.current = true;
+      });
+
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uid, listing.id]);
+
+  // ── Sync local state → localStorage (offline cache) ──────────────────────
   useEffect(() => {
     localStorage.setItem(`bnb_fin_${listing.id}`, JSON.stringify(financialData));
   }, [financialData, listing.id]);
@@ -119,6 +206,26 @@ export default function ListingDashboard({
   useEffect(() => {
     localStorage.setItem(`bnb_cal_${listing.id}`, JSON.stringify(calendarSources));
   }, [calendarSources, listing.id]);
+
+  // ── Sync financialData → Firestore (debounced 800 ms) ────────────────────
+  useEffect(() => {
+    if (!fsLoaded.current) return;
+    clearTimeout(finSaveTimer.current);
+    finSaveTimer.current = setTimeout(() => {
+      fsSetFinancialData(uid, listing.id, financialData as unknown as Record<string, unknown>).catch(() => {});
+    }, 800);
+    return () => clearTimeout(finSaveTimer.current);
+  }, [financialData, uid, listing.id]);
+
+  // ── Sync calendarSources → Firestore (debounced 400 ms) ──────────────────
+  useEffect(() => {
+    if (!fsLoaded.current) return;
+    clearTimeout(calSaveTimer.current);
+    calSaveTimer.current = setTimeout(() => {
+      fsSetCalendarSources(uid, listing.id, calendarSources as FSCalendarSource[]).catch(() => {});
+    }, 400);
+    return () => clearTimeout(calSaveTimer.current);
+  }, [calendarSources, uid, listing.id]);
 
   // Settings form state — kept in sync with the listing prop
   const [settingsForm, setSettingsForm] = useState({
@@ -160,9 +267,9 @@ export default function ListingDashboard({
 
   const importBookingsFromIcal = (imported: import("../api/ical-sync/route").ImportedBooking[]) => {
     let added = 0, skipped = 0;
+    const createdAt = new Date().toISOString();
+
     setBookings((prev) => {
-      // Existing UIDs come from bookings that were previously imported
-      // We store the iCal UID as the booking id for imported bookings
       const existingIds = new Set(prev.map((b) => b.id));
       const newBookings: Booking[] = [];
       for (const imp of imported) {
@@ -170,8 +277,8 @@ export default function ListingDashboard({
           skipped++;
           continue;
         }
-        newBookings.push({
-          id:            imp.uid,      // use UID so re-syncs are idempotent
+        const booking: Booking = {
+          id:            imp.uid,
           guestName:     imp.guestName,
           checkIn:       imp.checkIn,
           checkOut:      imp.checkOut,
@@ -183,8 +290,12 @@ export default function ListingDashboard({
           discountAmount:imp.discountAmount,
           amountPaid:    imp.amountPaid,
           notes:         imp.notes,
-          createdAt:     new Date().toISOString(),
-        });
+          createdAt,
+        };
+        newBookings.push(booking);
+        // Persist to Firestore using the iCal UID as the document ID for idempotency
+        const { id, ...rest } = booking;
+        fsAddBooking(uid, listing.id, rest).catch(() => {});
         added++;
       }
       return [...prev, ...newBookings];
@@ -192,27 +303,42 @@ export default function ListingDashboard({
     return { added, skipped };
   };
 
-  const addExpense = (expense: Omit<Expense, "id">) => {
-    setExpenses((prev) => [...prev, { ...expense, id: Date.now().toString() }]);
+  const addExpense = async (expense: Omit<Expense, "id">) => {
+    try {
+      const id = await fsAddExpense(uid, listing.id, expense);
+      setExpenses((prev) => [...prev, { ...expense, id }]);
+    } catch {
+      // Fallback to local ID if Firestore is unavailable
+      setExpenses((prev) => [...prev, { ...expense, id: Date.now().toString() }]);
+    }
   };
 
   const deleteExpense = (id: string) => {
     setExpenses((prev) => prev.filter((e) => e.id !== id));
+    fsDeleteExpense(uid, listing.id, id).catch(() => {});
   };
 
-  const addBooking = (booking: Omit<Booking, "id" | "createdAt">) => {
-    setBookings((prev) => [
-      ...prev,
-      { ...booking, id: Date.now().toString(), createdAt: new Date().toISOString() },
-    ]);
+  const addBooking = async (booking: Omit<Booking, "id" | "createdAt">) => {
+    const createdAt = new Date().toISOString();
+    try {
+      const id = await fsAddBooking(uid, listing.id, { ...booking, createdAt });
+      setBookings((prev) => [...prev, { ...booking, id, createdAt }]);
+    } catch {
+      setBookings((prev) => [
+        ...prev,
+        { ...booking, id: Date.now().toString(), createdAt },
+      ]);
+    }
   };
 
   const updateBooking = (id: string, updates: Partial<Booking>) => {
     setBookings((prev) => prev.map((b) => (b.id === id ? { ...b, ...updates } : b)));
+    fsUpdateBooking(uid, listing.id, id, updates).catch(() => {});
   };
 
   const deleteBooking = (id: string) => {
     setBookings((prev) => prev.filter((b) => b.id !== id));
+    fsDeleteBooking(uid, listing.id, id).catch(() => {});
   };
 
   const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
