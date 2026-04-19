@@ -594,6 +594,17 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ── FLOATING FEEDBACK ── */}
+      <a
+        href="https://forms.gle/AtsJdJV4RC4Co6HG6"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="lp-feedback-fab"
+        title="Share your feedback"
+      >
+        💬 <span>Feedback</span>
+      </a>
+
       {/* ── FOOTER ── */}
       <footer className="lp-footer">
         <div className="lp-footer-inner">
@@ -1594,5 +1605,35 @@ const CSS = `
     .lp-feat-panel-left { order: 2; }
     .lp-feat-panel-right { order: 1; }
     .lp-video-points { gap: 12px; }
+  }
+
+  .lp-feedback-fab {
+    position: fixed;
+    bottom: 28px;
+    right: 28px;
+    z-index: 999;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 10px 18px;
+    background: #1e2130;
+    border: 1px solid #2a3050;
+    border-radius: 999px;
+    color: #81B29A;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: 'DM Sans', sans-serif;
+    text-decoration: none;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    transition: background 0.15s, border-color 0.15s, transform 0.15s;
+  }
+  .lp-feedback-fab:hover {
+    background: #151d18;
+    border-color: #81B29A;
+    transform: translateY(-2px);
+  }
+  @media (max-width: 600px) {
+    .lp-feedback-fab span { display: none; }
+    .lp-feedback-fab { padding: 12px 14px; bottom: 20px; right: 20px; font-size: 18px; }
   }
 `;

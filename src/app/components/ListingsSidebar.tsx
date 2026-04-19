@@ -158,6 +158,18 @@ export default function ListingsSidebar({
         )}
       </div>
 
+      <div className="sidebar-feedback">
+        <a
+          href="https://forms.gle/AtsJdJV4RC4Co6HG6"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="feedback-btn"
+        >
+          <span className="feedback-icon">💬</span>
+          <span>Share Feedback</span>
+        </a>
+      </div>
+
       {onSignOut ? (
         <div className="sidebar-account">
           <div className="sidebar-account-info">
@@ -415,6 +427,34 @@ export default function ListingsSidebar({
           font-weight: 600;
           cursor: pointer;
           font-family: inherit;
+        }
+        .sidebar-feedback {
+          padding: 8px 16px 4px;
+        }
+        .feedback-btn {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          width: 100%;
+          padding: 9px 12px;
+          background: #161924;
+          border: 1px solid #2a3050;
+          border-radius: 8px;
+          color: #7a8aaa;
+          font-size: 13px;
+          font-family: inherit;
+          text-decoration: none;
+          transition: border-color 0.15s, color 0.15s, background 0.15s;
+          cursor: pointer;
+        }
+        .feedback-btn:hover {
+          border-color: #81B29A;
+          color: #81B29A;
+          background: #141c18;
+        }
+        .feedback-icon {
+          font-size: 15px;
+          line-height: 1;
         }
         .sidebar-account {
           padding: 12px 16px 20px;
