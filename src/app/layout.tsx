@@ -18,6 +18,9 @@ export const metadata: Metadata = {
   title: "Tractar — Short-term rental intelligence",
   description:
     "Track revenue, expenses, and profitability for every property you host.",
+  icons: {
+    icon: "/icon.jpg",
+  },
 };
 
 export default function RootLayout({
