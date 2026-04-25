@@ -133,7 +133,7 @@ export default function LandingPage() {
                   <span key={i} className="lp-avatar" style={{ background: c }} />
                 ))}
               </div>
-              <span className="lp-trust-text">2,400+ hosts trust Tractar</span>
+              <span className="lp-trust-text">Built for independent hosts</span>
             </div>
           </div>
 
@@ -239,19 +239,24 @@ export default function LandingPage() {
       </div>
 
       {/* ── STATS ROW ── */}
-      <div className="lp-stats-row" ref={s1.ref}>
-        {STATS.map((s, i) => (
-          <div key={i} className={`lp-stat ${s1.visible ? "lp-stat--in" : ""}`}
-            style={{ animationDelay: `${i * 0.1}s` }}>
-            <span className="lp-stat-val">
-              {s.prefix}
-              {s1.visible && <Counter to={s.to} duration={1600} />}
-              {s.suffix}
-            </span>
-            <span className="lp-stat-label">{s.label}</span>
-          </div>
-        ))}
-      </div>
+      {STATS.length > 0 && (
+        <div className="lp-stats-row" ref={s1.ref}>
+          {STATS.map((s, i) => (
+            <div
+              key={i}
+              className={`lp-stat ${s1.visible ? "lp-stat--in" : ""}`}
+              style={{ animationDelay: `${i * 0.1}s` }}
+            >
+              <span className="lp-stat-val">
+                {s.prefix}
+                {s1.visible && <Counter to={s.to} duration={1600} />}
+                {s.suffix}
+              </span>
+              <span className="lp-stat-label">{s.label}</span>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* ── FEATURES ── */}
       <section className="lp-features" id="features" ref={s2.ref}>
@@ -579,7 +584,7 @@ export default function LandingPage() {
             <em>Every month.</em>
           </h2>
           <p className="lp-finale-sub">
-            Join thousands of hosts who stopped guessing and started knowing.
+            Stop guessing. Start knowing your real monthly profit.
           </p>
           <a href="/login" className="lp-btn lp-btn-primary lp-btn-xl">
             Create your free account
@@ -636,10 +641,7 @@ const PLATFORMS = [
 ];
 
 const STATS = [
-  { to: 2400,  prefix: "",      suffix: "+", label: "hosts worldwide" },
-  { to: 38,    prefix: "",      suffix: "",  label: "countries" },
-  { to: 12000, prefix: "KSh ", suffix: "",  label: "avg. monthly profit tracked" },
-  { to: 98,    prefix: "",      suffix: "%", label: "keep using after 30 days" },
+  // Intentionally empty: avoid showing placeholder / unverified stats on the landing page.
 ];
 
 const FEATURES = [
