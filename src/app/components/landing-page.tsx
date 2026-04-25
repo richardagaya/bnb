@@ -640,7 +640,14 @@ const PLATFORMS = [
   { name: "Agoda",       color: "#E8000B" },
 ];
 
-const STATS = [
+type LandingStat = {
+  label: string;
+  to: number;
+  prefix?: string;
+  suffix?: string;
+};
+
+const STATS: LandingStat[] = [
   // Intentionally empty: avoid showing placeholder / unverified stats on the landing page.
 ];
 
