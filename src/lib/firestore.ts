@@ -75,6 +75,18 @@ export type FSBooking = {
   createdAt: string;
 };
 
+export type FSReferral = {
+  id: string;
+  date: string;
+  guestName: string;
+  referredTo: string;
+  commissionAmount: number;
+  commissionReceived: number;
+  paymentStatus: "received" | "pending" | "partial";
+  notes: string;
+  createdAt: string;
+};
+
 export type FSCalendarSource = {
   id: string;
   platform: string;
@@ -193,6 +205,26 @@ export async function updateBooking(uid: string, listingId: string, bookingId: s
 
 export async function deleteBooking(uid: string, listingId: string, bookingId: string) {
   await deleteDoc(doc(db, "users", uid, "bookings", listingId, "items", bookingId));
+}
+
+// ─── Referrals ────────────────────────────────────────────────────────────────
+
+export async function getReferrals(uid: string, listingId: string): Promise<FSReferral[]> {
+  const snap = await getDocs(collection(db, "users", uid, "referrals", listingId, "items"));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as FSReferral));
+}
+
+export async function addReferral(uid: string, listingId: string, referral: Omit<FSReferral, "id">): Promise<string> {
+  const ref = await addDoc(collection(db, "users", uid, "referrals", listingId, "items"), referral);
+  return ref.id;
+}
+
+export async function updateReferral(uid: string, listingId: string, referralId: string, updates: Partial<Omit<FSReferral, "id">>) {
+  await updateDoc(doc(db, "users", uid, "referrals", listingId, "items", referralId), updates);
+}
+
+export async function deleteReferral(uid: string, listingId: string, referralId: string) {
+  await deleteDoc(doc(db, "users", uid, "referrals", listingId, "items", referralId));
 }
 
 // ─── Calendar Sources ─────────────────────────────────────────────────────────

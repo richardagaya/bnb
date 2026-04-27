@@ -5,6 +5,7 @@ import CalendarSync, { CalendarSource } from "./CalendarSync";
 import FinancialCalculator, { FinancialData } from "./FinancialCalculator";
 import ExpenseTracker, { Expense } from "./ExpenseTracker";
 import BookingTracker, { Booking } from "./BookingTracker";
+import ReferralTracker, { Referral } from "./ReferralTracker";
 import { Listing } from "./ListingsSidebar";
 import {
   getFinancialData,
@@ -16,6 +17,10 @@ import {
   addBooking as fsAddBooking,
   updateBooking as fsUpdateBooking,
   deleteBooking as fsDeleteBooking,
+  getReferrals,
+  addReferral as fsAddReferral,
+  updateReferral as fsUpdateReferral,
+  deleteReferral as fsDeleteReferral,
   getCalendarSources,
   setCalendarSources as fsSetCalendarSources,
   type FSCalendarSource,
@@ -66,6 +71,7 @@ const TABS = [
   { id: "overview",  label: "Overview",      icon: "📊" },
   { id: "financials",label: "Financials",    icon: "💰" },
   { id: "bookings",  label: "Bookings",      icon: "📋" },
+  { id: "referrals", label: "Referrals",     icon: "🤝" },
   { id: "summary",   label: "Summary",       icon: "📈" },
   { id: "expenses",  label: "Expenses",      icon: "🧾" },
   { id: "calendar",  label: "Calendar Sync", icon: "📅" },
@@ -119,6 +125,9 @@ export default function ListingDashboard({
   const [calendarSources, setCalendarSources] = useState<CalendarSource[]>(() =>
     fromStorage(`bnb_cal_${listing.id}`, [])
   );
+  const [referrals, setReferrals] = useState<Referral[]>(() =>
+    fromStorage(`bnb_ref_${listing.id}`, [])
+  );
 
   // True once the initial Firestore load has settled (success or error).
   const fsLoaded = useRef(false);
@@ -136,8 +145,9 @@ export default function ListingDashboard({
       getExpenses(uid, listing.id),
       getBookings(uid, listing.id),
       getCalendarSources(uid, listing.id),
+      getReferrals(uid, listing.id),
     ])
-      .then(([fsFin, fsExp, fsBkn, fsCal]) => {
+      .then(([fsFin, fsExp, fsBkn, fsCal, fsRef]) => {
         if (cancelled) return;
 
         if (fsFin && Object.keys(fsFin).length > 0) {
@@ -178,6 +188,17 @@ export default function ListingDashboard({
             fsSetCalendarSources(uid, listing.id, localCal as FSCalendarSource[]).catch(() => {});
           }
         }
+
+        if (fsRef.length > 0) {
+          setReferrals(fsRef as Referral[]);
+        } else {
+          const localRef = fromStorage<Referral[]>(`bnb_ref_${listing.id}`, []);
+          if (localRef.length > 0) {
+            localRef.forEach(({ id: _id, ...rest }) => {
+              fsAddReferral(uid, listing.id, rest).catch(() => {});
+            });
+          }
+        }
       })
       .catch(() => {
         // Network/permission error — keep showing localStorage data
@@ -206,6 +227,10 @@ export default function ListingDashboard({
   useEffect(() => {
     localStorage.setItem(`bnb_cal_${listing.id}`, JSON.stringify(calendarSources));
   }, [calendarSources, listing.id]);
+
+  useEffect(() => {
+    localStorage.setItem(`bnb_ref_${listing.id}`, JSON.stringify(referrals));
+  }, [referrals, listing.id]);
 
   // ── Sync financialData → Firestore (debounced 800 ms) ────────────────────
   useEffect(() => {
@@ -341,6 +366,29 @@ export default function ListingDashboard({
     fsDeleteBooking(uid, listing.id, id).catch(() => {});
   };
 
+  const addReferral = async (referral: Omit<Referral, "id" | "createdAt">) => {
+    const createdAt = new Date().toISOString();
+    try {
+      const id = await fsAddReferral(uid, listing.id, { ...referral, createdAt });
+      setReferrals((prev) => [...prev, { ...referral, id, createdAt }]);
+    } catch {
+      setReferrals((prev) => [
+        ...prev,
+        { ...referral, id: Date.now().toString(), createdAt },
+      ]);
+    }
+  };
+
+  const updateReferral = (id: string, updates: Partial<Referral>) => {
+    setReferrals((prev) => prev.map((r) => (r.id === id ? { ...r, ...updates } : r)));
+    fsUpdateReferral(uid, listing.id, id, updates).catch(() => {});
+  };
+
+  const deleteReferral = (id: string) => {
+    setReferrals((prev) => prev.filter((r) => r.id !== id));
+    fsDeleteReferral(uid, listing.id, id).catch(() => {});
+  };
+
   const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
   const totalSetupCost =
     financialData.furnitureCost +
@@ -432,15 +480,19 @@ export default function ListingDashboard({
           const dataMonths = new Set<string>();
           bookings.forEach(b => { if (b.checkIn) dataMonths.add(b.checkIn.slice(0, 7)); });
           expenses.forEach(e => { if (e.date)    dataMonths.add(e.date.slice(0, 7)); });
+          referrals.forEach(r => { if (r.date) dataMonths.add(r.date.slice(0, 7)); });
 
           // P&L for the selected month
-          const monthBookings = bookings.filter(b => b.status !== "cancelled" && b.checkIn.startsWith(overviewMonth));
-          const monthExpenses = expenses.filter(e => e.date.startsWith(overviewMonth));
-          const actualRevenue = monthBookings.reduce((s, b) => s + b.amountPaid, 0);
+          const monthBookings  = bookings.filter(b => b.status !== "cancelled" && b.checkIn.startsWith(overviewMonth));
+          const monthExpenses  = expenses.filter(e => e.date.startsWith(overviewMonth));
+          const monthReferrals = referrals.filter(r => r.date.startsWith(overviewMonth));
+          const bookingRevenue    = monthBookings.reduce((s, b) => s + b.amountPaid, 0);
+          const referralRevenue   = monthReferrals.reduce((s, r) => s + r.commissionReceived, 0);
+          const actualRevenue     = bookingRevenue + referralRevenue;
           const fixedCosts    = financialData.monthlyRent + financialData.monthlyUtilities + financialData.monthlyCleaner;
           const monthExpTotal = monthExpenses.reduce((s, e) => s + e.amount, 0);
           const actualProfit  = actualRevenue - fixedCosts - monthExpTotal;
-          const hasBookings   = monthBookings.length > 0;
+          const hasBookings   = monthBookings.length > 0 || monthReferrals.length > 0;
 
           // When no bookings exist for the month, use 0 — no projection fallback
           const displayProfit  = hasBookings ? actualProfit : 0;
@@ -464,7 +516,10 @@ export default function ListingDashboard({
                   </h2>
                   <p className="ov2-tagline-sub">
                     {hasBookings
-                      ? `${monthBookings.length} booking${monthBookings.length !== 1 ? "s" : ""} · ${formatCurrency(actualRevenue)} collected`
+                      ? [
+                          monthBookings.length > 0 && `${monthBookings.length} booking${monthBookings.length !== 1 ? "s" : ""}`,
+                          monthReferrals.length > 0 && `${monthReferrals.length} referral${monthReferrals.length !== 1 ? "s" : ""}`,
+                        ].filter(Boolean).join(" · ") + ` · ${formatCurrency(actualRevenue)} total revenue`
                       : isCurrentMonth
                         ? "No bookings logged yet this month — figures below are projections."
                         : "No bookings recorded for this month."}
@@ -579,7 +634,7 @@ export default function ListingDashboard({
                   </div>
                   <div className="ov2-card-sub">
                     {profitIsActual
-                      ? `${formatCurrency(actualRevenue)} revenue − ${formatCurrency(fixedCosts)} fixed − ${formatCurrency(monthExpTotal)} expenses`
+                      ? `${formatCurrency(bookingRevenue)} bookings${referralRevenue > 0 ? ` + ${formatCurrency(referralRevenue)} referrals` : ""} − ${formatCurrency(fixedCosts)} fixed − ${formatCurrency(monthExpTotal)} expenses`
                       : "No bookings recorded for this month"}
                   </div>
                   {!profitIsActual && (
@@ -598,6 +653,14 @@ export default function ListingDashboard({
                   <div>
                     <div className="cta-title">Log a Booking</div>
                     <div className="cta-desc">Add guest, dates, payment status</div>
+                  </div>
+                  <span className="cta-arrow">→</span>
+                </button>
+                <button className="ov2-cta" onClick={() => setActiveTab("referrals")}>
+                  <span>🤝</span>
+                  <div>
+                    <div className="cta-title">Log a Referral</div>
+                    <div className="cta-desc">Track commissions from referring guests</div>
                   </div>
                   <span className="cta-arrow">→</span>
                 </button>
@@ -635,6 +698,7 @@ export default function ListingDashboard({
           const monthSet = new Set<string>([currentMonthKey]);
           bookings.forEach((b) => { if (b.checkIn) monthSet.add(b.checkIn.slice(0, 7)); });
           expenses.forEach((e) => { if (e.date)   monthSet.add(e.date.slice(0, 7)); });
+          referrals.forEach((r) => { if (r.date)  monthSet.add(r.date.slice(0, 7)); });
           const allMonthKeys = [...monthSet].sort((a, b) => b.localeCompare(a)); // newest first
 
           const getMonthLabel = (key: string) => {
@@ -644,10 +708,14 @@ export default function ListingDashboard({
 
           // Build per-month P&L
           const monthlyPnl = allMonthKeys.map((key) => {
-            const mBookings = bookings.filter((b) => b.status !== "cancelled" && b.checkIn.startsWith(key));
-            const mExpenses = expenses.filter((e) => e.date.startsWith(key));
-            const revenue       = mBookings.reduce((s, b) => s + b.amountPaid, 0);
+            const mBookings   = bookings.filter((b) => b.status !== "cancelled" && b.checkIn.startsWith(key));
+            const mExpenses   = expenses.filter((e) => e.date.startsWith(key));
+            const mReferrals  = referrals.filter((r) => r.date.startsWith(key));
+            const bookingRev    = mBookings.reduce((s, b) => s + b.amountPaid, 0);
+            const referralRev   = mReferrals.reduce((s, r) => s + r.commissionReceived, 0);
+            const revenue       = bookingRev + referralRev;
             const pendingRev    = mBookings.reduce((s, b) => s + Math.max(0, b.chargeAmount - b.discountAmount - b.amountPaid), 0);
+            const pendingRefRev = mReferrals.reduce((s, r) => s + Math.max(0, r.commissionAmount - r.commissionReceived), 0);
             const discountsGiven = mBookings.reduce((s, b) => s + b.discountAmount, 0);
             const grossCharged  = mBookings.reduce((s, b) => s + b.chargeAmount, 0);
             const mExpTotal     = mExpenses.reduce((s, e) => s + e.amount, 0);
@@ -663,18 +731,20 @@ export default function ListingDashboard({
 
             return {
               key, label: getMonthLabel(key), isCurrentMonth: key === currentMonthKey,
-              bookings: mBookings, expenses: mExpenses, catBreakdown,
-              revenue, pendingRev, discountsGiven, grossCharged,
+              bookings: mBookings, expenses: mExpenses, mReferrals, catBreakdown,
+              bookingRev, referralRev,
+              revenue, pendingRev, pendingRefRev, discountsGiven, grossCharged,
               expensesTotal: mExpTotal, fixedCosts, totalCosts, profit,
             };
           });
 
           // All-time totals
-          const atRevenue   = monthlyPnl.reduce((s, m) => s + m.revenue, 0);
-          const atExpenses  = monthlyPnl.reduce((s, m) => s + m.expensesTotal, 0);
-          const atProfit    = monthlyPnl.reduce((s, m) => s + m.profit, 0);
-          const atBookings  = bookings.filter((b) => b.status !== "cancelled").length;
-          const atDiscounts = bookings.reduce((s, b) => s + b.discountAmount, 0);
+          const atRevenue      = monthlyPnl.reduce((s, m) => s + m.revenue, 0);
+          const atReferralRev  = monthlyPnl.reduce((s, m) => s + m.referralRev, 0);
+          const atExpenses     = monthlyPnl.reduce((s, m) => s + m.expensesTotal, 0);
+          const atProfit       = monthlyPnl.reduce((s, m) => s + m.profit, 0);
+          const atBookings     = bookings.filter((b) => b.status !== "cancelled").length;
+          const atDiscounts    = bookings.reduce((s, b) => s + b.discountAmount, 0);
 
           const isExpanded = (k: string) => summaryExpandedMonths.has(k);
           const toggleExpand = (k: string) =>
@@ -700,6 +770,12 @@ export default function ListingDashboard({
                   <span className="ms-at-label">All-time Revenue</span>
                   <span className="ms-at-value ms-green">{formatCurrency(atRevenue)}</span>
                 </div>
+                {atReferralRev > 0 && (
+                  <div className="ms-at-item" style={{ borderColor: "#06D6A033" }}>
+                    <span className="ms-at-label">🤝 Referral Commissions</span>
+                    <span className="ms-at-value" style={{ color: "#06D6A0" }}>{formatCurrency(atReferralRev)}</span>
+                  </div>
+                )}
                 <div className="ms-at-item">
                   <span className="ms-at-label">Expenses Logged</span>
                   <span className="ms-at-value ms-red">{formatCurrency(atExpenses)}</span>
@@ -789,7 +865,7 @@ export default function ListingDashboard({
 
                         {/* Revenue */}
                         <p className="ms-sec-label">Revenue</p>
-                        {month.bookings.length > 0 ? (
+                        {(month.bookings.length > 0 || month.mReferrals.length > 0) ? (
                           <div className="ms-block">
                             {month.bookings.map((b) => (
                               <div key={b.id} className="ms-row">
@@ -800,14 +876,29 @@ export default function ListingDashboard({
                                 <span className="ms-row-val ms-green">{formatCurrency(b.amountPaid)}</span>
                               </div>
                             ))}
+                            {month.mReferrals.map((r) => (
+                              <div key={r.id} className="ms-row">
+                                <span className="ms-row-name">
+                                  🤝 {r.guestName}
+                                  <span className="ms-row-meta"> · referred to {r.referredTo}</span>
+                                </span>
+                                <span className="ms-row-val" style={{ color: "#06D6A0" }}>{formatCurrency(r.commissionReceived)}</span>
+                              </div>
+                            ))}
                             {month.pendingRev > 0 && (
                               <div className="ms-row ms-row-pending">
-                                <span>Outstanding payments</span>
+                                <span>Outstanding booking payments</span>
                                 <span className="ms-amber">{formatCurrency(month.pendingRev)}</span>
                               </div>
                             )}
+                            {month.pendingRefRev > 0 && (
+                              <div className="ms-row ms-row-pending">
+                                <span>Pending referral commissions</span>
+                                <span className="ms-amber">{formatCurrency(month.pendingRefRev)}</span>
+                              </div>
+                            )}
                             <div className="ms-row ms-row-sub">
-                              <span>Total collected</span>
+                              <span>Total revenue</span>
                               <span className="ms-green">{formatCurrency(month.revenue)}</span>
                             </div>
                           </div>
@@ -922,6 +1013,16 @@ export default function ListingDashboard({
             onUpdateBooking={updateBooking}
             onDeleteBooking={deleteBooking}
             accentColor={listing.color}
+          />
+        )}
+
+        {activeTab === "referrals" && (
+          <ReferralTracker
+            referrals={referrals}
+            onAddReferral={addReferral}
+            onUpdateReferral={updateReferral}
+            onDeleteReferral={deleteReferral}
+            accentColor="#06D6A0"
           />
         )}
 
