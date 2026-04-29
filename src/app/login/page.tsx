@@ -322,9 +322,9 @@ function LoginForm() {
 
           <p className="auth-terms">
             By continuing, you agree to our{" "}
-            <Link href="/" className="auth-terms-link">Terms</Link>{" "}
+            <Link href="/terms-of-service" className="auth-terms-link">Terms</Link>{" "}
             and{" "}
-            <Link href="/" className="auth-terms-link">Privacy Policy</Link>.
+            <Link href="/privacy-policy" className="auth-terms-link">Privacy Policy</Link>.
           </p>
         </div>
       </div>

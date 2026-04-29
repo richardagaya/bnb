@@ -14,6 +14,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithPopup,
   GoogleAuthProvider,
+  getAdditionalUserInfo,
   updateProfile,
   signOut as firebaseSignOut,
   sendPasswordResetEmail,
@@ -77,6 +78,24 @@ function friendlyError(code: string): string {
   }
 }
 
+async function sendWelcomeEmail(email: string, name: string) {
+  if (!email) return;
+
+  try {
+    const response = await fetch("/api/send-welcome", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, name }),
+    });
+
+    if (!response.ok) {
+      console.error("[auth] Welcome email failed:", response.status);
+    }
+  } catch (err) {
+    console.error("[auth] Welcome email request failed:", err);
+  }
+}
+
 // ─── Provider ─────────────────────────────────────────────────────────────────
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -135,12 +154,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       setUser(mapFirebaseUser(cred.user, { uid: cred.user.uid, email: trimmedEmail, name: displayName }));
 
-      // Fire-and-forget welcome email — don't block the sign-up flow
-      fetch("/api/send-welcome", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: trimmedEmail, name: displayName }),
-      }).catch(() => undefined);
+      // Wait before redirecting so the browser does not cancel the request.
+      await sendWelcomeEmail(trimmedEmail, displayName);
 
       return { ok: true };
     } catch (err: unknown) {
@@ -153,20 +168,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const provider = new GoogleAuthProvider();
       const cred = await signInWithPopup(auth, provider);
+      const email = cred.user.email ?? "";
+      const name = cred.user.displayName ?? email.split("@")[0] ?? "Host";
 
-      // Create Firestore profile on first sign-in — fire and forget, don't block redirect
+      // Create Firestore profile on first sign-in without blocking Google auth.
       getUserProfile(cred.user.uid)
         .then((existing) => {
           if (!existing) {
             return createUserProfile({
               uid: cred.user.uid,
-              email: cred.user.email ?? "",
-              name: cred.user.displayName ?? cred.user.email?.split("@")[0] ?? "Host",
+              email,
+              name,
               photoURL: cred.user.photoURL ?? undefined,
             });
           }
         })
         .catch(() => undefined);
+
+      if (getAdditionalUserInfo(cred)?.isNewUser) {
+        await sendWelcomeEmail(email, name);
+      }
 
       // onAuthStateChanged fires immediately and sets the user
       return { ok: true };
