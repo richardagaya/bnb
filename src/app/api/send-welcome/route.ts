@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 // The verified "from" address in your Resend account.
 // Change this once you've verified a domain in the Resend dashboard.
 const FROM = process.env.RESEND_FROM_EMAIL ?? "Tractar <onboarding@resend.dev>";
@@ -16,6 +14,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Email is required" }, { status: 400 });
     }
 
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey) {
+      console.error("[send-welcome] Missing RESEND_API_KEY");
+      return NextResponse.json({ error: "Email service is not configured" }, { status: 500 });
+    }
+
+    const resend = new Resend(apiKey);
     const firstName = (name ?? email.split("@")[0]).split(" ")[0];
 
     const { error } = await resend.emails.send({
