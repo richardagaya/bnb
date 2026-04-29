@@ -134,6 +134,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       setUser(mapFirebaseUser(cred.user, { uid: cred.user.uid, email: trimmedEmail, name: displayName }));
+
+      // Fire-and-forget welcome email — don't block the sign-up flow
+      fetch("/api/send-welcome", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: trimmedEmail, name: displayName }),
+      }).catch(() => undefined);
+
       return { ok: true };
     } catch (err: unknown) {
       const code = (err as { code?: string }).code ?? "";
@@ -178,7 +186,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const resetPassword = useCallback(async (email: string): Promise<SignInResult> => {
     try {
-      await sendPasswordResetEmail(auth, email.trim());
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? (typeof window !== "undefined" ? window.location.origin : "");
+      await sendPasswordResetEmail(auth, email.trim(), {
+        // After resetting, Firebase redirects here — also configure this URL
+        // in Firebase Console → Authentication → Templates → Password reset → Action URL
+        url: `${appUrl}/reset-password`,
+        handleCodeInApp: true,
+      });
       return { ok: true };
     } catch (err: unknown) {
       const code = (err as { code?: string }).code ?? "";

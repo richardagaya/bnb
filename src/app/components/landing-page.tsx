@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { saveMarketingEmail } from "@/lib/firestore";
 
 /* ── Scroll-reveal hook ─────────────────────────────────────────────────── */
 function useReveal() {
@@ -45,6 +46,20 @@ export default function LandingPage() {
   const [activeFeature, setActiveFeature] = useState(0);
   const [videoPlaying, setVideoPlaying]   = useState(false);
   const [activeMonth, setActiveMonth]     = useState(0);
+  const [mcEmail, setMcEmail]           = useState("");
+  const [mcState, setMcState]           = useState<"idle" | "loading" | "done" | "error">("idle");
+
+  const handleMarketingEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!mcEmail.trim() || mcState === "loading" || mcState === "done") return;
+    setMcState("loading");
+    try {
+      await saveMarketingEmail(mcEmail.trim(), "landing-footer");
+      setMcState("done");
+    } catch {
+      setMcState("error");
+    }
+  };
 
   // Sticky nav
   useEffect(() => {
@@ -72,7 +87,7 @@ export default function LandingPage() {
       {/* ── NAV ── */}
       <nav className={`lp-nav ${scrolled ? "lp-nav--stuck" : ""}`}>
         <a href="/" className="lp-logo">
-          <span className="lp-logo-mark">T</span>Tractar
+          <img src="/logo.png" alt="Tractar" className="lp-logo-img" />
         </a>
         <ul className="lp-nav-links">
           <li><a href="#features">Features</a></li>
@@ -610,16 +625,55 @@ export default function LandingPage() {
         💬 <span>Feedback</span>
       </a>
 
+      {/* ── MARKETING EMAIL CAPTURE ── */}
+      <section className="lp-mc-section">
+        <div className="lp-mc-inner">
+          <div className="lp-mc-text">
+            <p className="lp-mc-eyebrow">Stay in the loop</p>
+            <h3 className="lp-mc-heading">Get tips, updates &amp; feature releases</h3>
+            <p className="lp-mc-sub">No spam. Unsubscribe any time.</p>
+          </div>
+          <form className="lp-mc-form" onSubmit={handleMarketingEmail}>
+            {mcState === "done" ? (
+              <div className="lp-mc-success">
+                <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
+                  <circle cx="8" cy="8" r="7" stroke="#81B29A" strokeWidth="1.5"/>
+                  <path d="M5 8l2.5 2.5L11 5.5" stroke="#81B29A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                You&apos;re on the list — thanks!
+              </div>
+            ) : (
+              <>
+                <input
+                  type="email"
+                  required
+                  className="lp-mc-input"
+                  placeholder="your@email.com"
+                  value={mcEmail}
+                  onChange={(e) => { setMcEmail(e.target.value); if (mcState === "error") setMcState("idle"); }}
+                  disabled={mcState === "loading"}
+                />
+                <button type="submit" className="lp-mc-btn" disabled={mcState === "loading"}>
+                  {mcState === "loading" ? "Saving…" : "Notify me"}
+                </button>
+              </>
+            )}
+            {mcState === "error" && (
+              <p className="lp-mc-error">Something went wrong — please try again.</p>
+            )}
+          </form>
+        </div>
+      </section>
+
       {/* ── FOOTER ── */}
       <footer className="lp-footer">
         <div className="lp-footer-inner">
           <div className="lp-footer-brand">
-            <span className="lp-logo-mark">H</span>
-            <span>Tractar</span>
+            <img src="/logo.png" alt="Tractar" className="lp-logo-img lp-logo-img--footer" />
           </div>
           <nav className="lp-footer-links">
-            <a href="#">Privacy</a>
-            <a href="#">Terms</a>
+            <a href="/privacy-policy">Privacy</a>
+            <a href="/terms-of-service">Terms</a>
             <a href="#">Contact</a>
           </nav>
           <p className="lp-footer-copy">© 2026 Tractar. All rights reserved.</p>
@@ -912,33 +966,36 @@ const CSS = `
   .lp-nav {
     position: fixed; top: 0; left: 0; right: 0; z-index: 500;
     display: flex; align-items: center; justify-content: space-between;
-    padding: 20px 48px;
-    transition: background 0.3s, backdrop-filter 0.3s, border-color 0.3s, padding 0.25s;
-    border-bottom: 1px solid transparent;
+    height: 74px;
+    padding: 0 48px;
+    background: rgba(247,244,236,0.98);
+    border-bottom: 1px solid rgba(61,64,91,0.12);
+    transition: background 0.3s, box-shadow 0.3s, padding 0.25s;
   }
   .lp-nav--stuck {
-    background: rgba(11,12,16,0.88);
-    backdrop-filter: blur(16px);
-    border-color: var(--bd);
-    padding: 14px 48px;
+    background: rgba(247,244,236,0.98);
+    box-shadow: 0 2px 16px rgba(61,64,91,0.10);
+    padding: 0 48px;
   }
   .lp-logo {
-    display: flex; align-items: center; gap: 10px;
-    font-size: 15px; font-weight: 600; color: var(--text);
-    text-decoration: none; letter-spacing: -0.2px;
+    display: flex; align-items: center;
+    text-decoration: none;
   }
-  .lp-logo-mark {
-    width: 28px; height: 28px; background: var(--sage); color: #0b0c10;
-    border-radius: 7px; display: inline-flex; align-items: center; justify-content: center;
-    font-weight: 700; font-size: 13px;
+  .lp-logo-img {
+    height: 60px; width: auto; display: block;
+    filter: brightness(0.3) contrast(2) saturate(2);
+  }
+  .lp-logo-img--footer {
+    height: 60px;
+    filter: brightness(0.3) contrast(2) saturate(2);
   }
   .lp-nav-links {
     list-style: none; display: flex; gap: 32px;
   }
   .lp-nav-links a {
-    font-size: 13px; color: var(--muted); text-decoration: none; transition: color 0.15s;
+    font-size: 13px; color: #555; text-decoration: none; transition: color 0.15s;
   }
-  .lp-nav-links a:hover { color: var(--text); }
+  .lp-nav-links a:hover { color: #111; }
   .lp-nav-cta {
     font-size: 13px; font-weight: 600;
     background: var(--sage); color: #0b0c10;
@@ -1561,25 +1618,81 @@ const CSS = `
   .lp-finale-sub { font-size: 16px; color: var(--muted); margin-bottom: 44px; }
   .lp-finale-note { font-size: 13px; color: var(--faint); margin-top: 20px; }
 
+  /* ── MARKETING EMAIL CAPTURE ── */
+  .lp-mc-section {
+    border-top: 1px solid var(--bd);
+    padding: 60px 48px;
+    background: var(--surface);
+  }
+  .lp-mc-inner {
+    max-width: 1160px; margin: 0 auto;
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 40px; flex-wrap: wrap;
+  }
+  .lp-mc-eyebrow {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.1em; color: var(--sage); margin: 0 0 8px;
+  }
+  .lp-mc-heading {
+    font-size: 22px; font-weight: 700; color: var(--text);
+    margin: 0 0 6px; letter-spacing: -0.02em;
+  }
+  .lp-mc-sub { font-size: 13px; color: var(--faint); margin: 0; }
+  .lp-mc-form {
+    display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-start;
+    flex-shrink: 0;
+  }
+  .lp-mc-input {
+    padding: 12px 16px; width: 260px;
+    background: var(--bg); border: 1.5px solid var(--bd);
+    border-radius: 10px; color: var(--text); font-size: 14px;
+    font-family: inherit; outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .lp-mc-input:focus { border-color: var(--sage); box-shadow: 0 0 0 3px rgba(129,178,154,0.1); }
+  .lp-mc-input::placeholder { color: var(--faint); }
+  .lp-mc-input:disabled { opacity: 0.5; }
+  .lp-mc-btn {
+    padding: 12px 22px; border: none; border-radius: 10px;
+    background: var(--sage); color: #0c0e14;
+    font-size: 14px; font-weight: 700; font-family: inherit;
+    cursor: pointer; white-space: nowrap;
+    transition: opacity 0.15s;
+  }
+  .lp-mc-btn:hover:not(:disabled) { opacity: 0.88; }
+  .lp-mc-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .lp-mc-success {
+    display: flex; align-items: center; gap: 8px;
+    padding: 12px 18px; border-radius: 10px;
+    background: rgba(129,178,154,0.08); border: 1px solid rgba(129,178,154,0.25);
+    color: var(--sage); font-size: 14px; font-weight: 500;
+  }
+  .lp-mc-error { font-size: 12px; color: #e07a5f; margin: 4px 0 0; width: 100%; }
+
   /* ── FOOTER ── */
-  .lp-footer { border-top: 1px solid var(--bd); padding: 28px 48px; }
+  .lp-footer {
+    background: rgba(247,244,236,0.98);
+    border-top: 1px solid rgba(61,64,91,0.12);
+    padding: 28px 48px;
+  }
   .lp-footer-inner {
     max-width: 1160px; margin: 0 auto;
     display: flex; align-items: center; gap: 32px;
   }
   .lp-footer-brand {
     display: flex; align-items: center; gap: 8px;
-    font-size: 14px; font-weight: 600; color: var(--text); margin-right: auto;
+    font-size: 14px; font-weight: 600; color: #111; margin-right: auto;
   }
   .lp-footer-links { display: flex; gap: 24px; }
-  .lp-footer-links a { font-size: 12px; color: var(--faint); text-decoration: none; transition: color 0.15s; }
-  .lp-footer-links a:hover { color: var(--muted); }
-  .lp-footer-copy { font-size: 12px; color: var(--faint); }
+  .lp-footer-links a { font-size: 12px; color: #888; text-decoration: none; transition: color 0.15s; }
+  .lp-footer-links a:hover { color: #333; }
+  .lp-footer-copy { font-size: 12px; color: #aaa; }
 
   /* ── RESPONSIVE ── */
   @media (max-width: 960px) {
-    .lp-nav { padding: 16px 24px; }
-    .lp-nav--stuck { padding: 12px 24px; }
+    .lp-nav { height: 70px; padding: 0 24px; }
+    .lp-nav--stuck { padding: 0 24px; }
+    .lp-logo-img { height: 64px; }
     .lp-nav-links { display: none; }
     .lp-hero { padding: 120px 24px 80px; }
     .lp-hero-inner { grid-template-columns: 1fr; gap: 48px; }
@@ -1602,6 +1715,11 @@ const CSS = `
     .lp-ical-section { padding: 60px 24px; }
     .lp-ical-inner { grid-template-columns: 1fr; gap: 40px; }
     .lp-finale { padding: 80px 24px; }
+    .lp-mc-section { padding: 40px 24px; }
+    .lp-mc-inner { flex-direction: column; align-items: flex-start; gap: 24px; }
+    .lp-mc-input { width: 100%; }
+    .lp-mc-form { width: 100%; }
+    .lp-mc-btn { width: 100%; text-align: center; padding: 13px; }
     .lp-footer { padding: 24px; }
     .lp-footer-inner { flex-wrap: wrap; gap: 16px; }
     .lp-ticker-item { padding: 14px 20px; }

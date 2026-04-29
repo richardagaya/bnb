@@ -63,8 +63,7 @@ export default function ListingsSidebar({
     <aside className={`listings-sidebar${isOpen ? " sidebar-open" : ""}`}>
       <div className="sidebar-header">
         <div className="sidebar-logo">
-          <span className="logo-icon">⌂</span>
-          <span className="logo-text">Tractar</span>
+          <img src="/logo.png" alt="Tractar" className="sidebar-logo-img" />
         </div>
         <p className="sidebar-subtitle">Your Properties</p>
         {/* Close button — mobile only */}
@@ -240,17 +239,13 @@ export default function ListingsSidebar({
         .sidebar-logo {
           display: flex;
           align-items: center;
-          gap: 10px;
           margin-bottom: 4px;
         }
-        .logo-icon {
-          font-size: 22px;
-        }
-        .logo-text {
-          font-size: 18px;
-          font-weight: 700;
-          color: #e8e3d9;
-          letter-spacing: -0.3px;
+        .sidebar-logo-img {
+          height: 48px;
+          width: auto;
+          display: block;
+          filter: brightness(0) invert(1);
         }
         .sidebar-subtitle {
           font-size: 11px;

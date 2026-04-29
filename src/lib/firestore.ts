@@ -207,6 +207,16 @@ export async function deleteBooking(uid: string, listingId: string, bookingId: s
   await deleteDoc(doc(db, "users", uid, "bookings", listingId, "items", bookingId));
 }
 
+// ─── Marketing Emails ─────────────────────────────────────────────────────────
+
+export async function saveMarketingEmail(email: string, source: string = "landing") {
+  await addDoc(collection(db, "marketingEmails"), {
+    email: email.trim().toLowerCase(),
+    source,
+    createdAt: serverTimestamp(),
+  });
+}
+
 // ─── Referrals ────────────────────────────────────────────────────────────────
 
 export async function getReferrals(uid: string, listingId: string): Promise<FSReferral[]> {

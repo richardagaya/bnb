@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   description:
     "Track revenue, expenses, and profitability for every property you host.",
   icons: {
-    icon: "/icon.jpg",
+    icon: "/favicon.ico",
   },
 };
 
