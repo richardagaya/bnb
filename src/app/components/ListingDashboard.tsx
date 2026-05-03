@@ -738,14 +738,6 @@ export default function ListingDashboard({
             };
           });
 
-          // All-time totals
-          const atRevenue      = monthlyPnl.reduce((s, m) => s + m.revenue, 0);
-          const atReferralRev  = monthlyPnl.reduce((s, m) => s + m.referralRev, 0);
-          const atExpenses     = monthlyPnl.reduce((s, m) => s + m.expensesTotal, 0);
-          const atProfit       = monthlyPnl.reduce((s, m) => s + m.profit, 0);
-          const atBookings     = bookings.filter((b) => b.status !== "cancelled").length;
-          const atDiscounts    = bookings.reduce((s, b) => s + b.discountAmount, 0);
-
           const isExpanded = (k: string) => summaryExpandedMonths.has(k);
           const toggleExpand = (k: string) =>
             setSummaryExpandedMonths((prev) => {
@@ -764,42 +756,8 @@ export default function ListingDashboard({
                 </p>
               </div>
 
-              {/* All-time stats */}
-              <div className="ms-alltime">
-                <div className="ms-at-item">
-                  <span className="ms-at-label">All-time Revenue</span>
-                  <span className="ms-at-value ms-green">{formatCurrency(atRevenue)}</span>
-                </div>
-                {atReferralRev > 0 && (
-                  <div className="ms-at-item" style={{ borderColor: "#06D6A033" }}>
-                    <span className="ms-at-label">🤝 Referral Commissions</span>
-                    <span className="ms-at-value" style={{ color: "#06D6A0" }}>{formatCurrency(atReferralRev)}</span>
-                  </div>
-                )}
-                <div className="ms-at-item">
-                  <span className="ms-at-label">Expenses Logged</span>
-                  <span className="ms-at-value ms-red">{formatCurrency(atExpenses)}</span>
-                </div>
-                <div className="ms-at-item">
-                  <span className="ms-at-label">All-time Profit</span>
-                  <span className="ms-at-value" style={{ color: atProfit >= 0 ? "#81b29a" : "#e07a5f" }}>
-                    {formatCurrency(atProfit)}
-                  </span>
-                </div>
-                <div className="ms-at-item">
-                  <span className="ms-at-label">Total Bookings</span>
-                  <span className="ms-at-value">{atBookings}</span>
-                </div>
-                {atDiscounts > 0 && (
-                  <div className="ms-at-item">
-                    <span className="ms-at-label">Discounts Given</span>
-                    <span className="ms-at-value ms-amber">{formatCurrency(atDiscounts)}</span>
-                  </div>
-                )}
-              </div>
-
               {/* Setup prompt */}
-              {atBookings === 0 && expenses.length === 0 && (
+              {bookings.filter((b) => b.status !== "cancelled").length === 0 && expenses.length === 0 && (
                 <div className="ms-empty">
                   <span>📊</span>
                   <p>
@@ -992,11 +950,6 @@ export default function ListingDashboard({
                             Profit margin: {((month.profit / month.revenue) * 100).toFixed(1)}%
                           </p>
                         )}
-                        {month.profit < 0 && effectiveRate > 0 && (
-                          <p className="ms-hint ms-hint-red">
-                            Need {Math.ceil(Math.abs(month.profit) / effectiveRate)} more booking{Math.ceil(Math.abs(month.profit) / effectiveRate) !== 1 ? "s" : ""} at {formatCurrency(effectiveRate)}/stay to break even.
-                          </p>
-                        )}
                       </div>
                     )}
                   </div>
@@ -1006,25 +959,35 @@ export default function ListingDashboard({
           );
         })()}
 
-        {activeTab === "bookings" && (
-          <BookingTracker
-            bookings={bookings}
-            onAddBooking={addBooking}
-            onUpdateBooking={updateBooking}
-            onDeleteBooking={deleteBooking}
-            accentColor={listing.color}
-          />
-        )}
+        {activeTab === "bookings" && (() => {
+          const t = new Date();
+          const currentBookingsMonth = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}`;
+          const bookingsThisMonth = bookings.filter((b) => b.checkIn.startsWith(currentBookingsMonth));
+          return (
+            <BookingTracker
+              bookings={bookingsThisMonth}
+              onAddBooking={addBooking}
+              onUpdateBooking={updateBooking}
+              onDeleteBooking={deleteBooking}
+              accentColor={listing.color}
+            />
+          );
+        })()}
 
-        {activeTab === "referrals" && (
-          <ReferralTracker
-            referrals={referrals}
-            onAddReferral={addReferral}
-            onUpdateReferral={updateReferral}
-            onDeleteReferral={deleteReferral}
-            accentColor="#06D6A0"
-          />
-        )}
+        {activeTab === "referrals" && (() => {
+          const t = new Date();
+          const currentReferralsMonth = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}`;
+          const referralsThisMonth = referrals.filter((r) => r.date.startsWith(currentReferralsMonth));
+          return (
+            <ReferralTracker
+              referrals={referralsThisMonth}
+              onAddReferral={addReferral}
+              onUpdateReferral={updateReferral}
+              onDeleteReferral={deleteReferral}
+              accentColor="#06D6A0"
+            />
+          );
+        })()}
 
         {activeTab === "expenses" && (
           <ExpenseTracker
@@ -1636,8 +1599,6 @@ export default function ListingDashboard({
           .ms-card-body { padding: 0 12px 14px; }
           .ms-net-val { font-size: 18px; }
           .ms-net-label { font-size: 13px; }
-          /* All-time grid: 2 columns */
-          .ms-alltime { grid-template-columns: repeat(2, 1fr); }
 
           /* Overview: greeting stacks */
           .ov2-greeting { padding: 12px; }
@@ -1667,9 +1628,6 @@ export default function ListingDashboard({
           /* Month nav */
           .ov2-mn-filter-label { font-size: 12px; }
           .ov2-mn-today { display: none; }
-
-          /* Summary: single column alltime */
-          .ms-alltime { grid-template-columns: 1fr; }
         }
 
         /* ── SETTINGS TAB ── */
@@ -1904,24 +1862,6 @@ export default function ListingDashboard({
         .ms-title { font-size: 22px; font-weight: 700; color: #e8e3d9; margin: 0; }
         .ms-desc  { font-size: 13px; color: #5a6080; margin: 0; line-height: 1.5; }
 
-        /* All-time stats */
-        .ms-alltime {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-          gap: 10px;
-        }
-        .ms-at-item {
-          background: #161924;
-          border: 1px solid #1e2130;
-          border-radius: 10px;
-          padding: 14px 16px;
-          display: flex;
-          flex-direction: column;
-          gap: 5px;
-        }
-        .ms-at-label { font-size: 10px; color: #5a6080; text-transform: uppercase; letter-spacing: 0.8px; }
-        .ms-at-value { font-size: 18px; font-weight: 800; color: #e8e3d9; }
-
         /* Empty state */
         .ms-empty {
           background: #161924;
@@ -2056,7 +1996,6 @@ export default function ListingDashboard({
         .ms-net-val { font-size: 26px; font-weight: 800; white-space: nowrap; }
         .ms-hint { font-size: 12px; margin: 4px 0 0; line-height: 1.5; }
         .ms-hint-green { color: #5a7060; }
-        .ms-hint-red   { color: #905050; }
 
         /* Colour utilities */
         .ms-green { color: #81b29a; }
