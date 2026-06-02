@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
+import { useDismissOnEscape, useDismissOnClickOutside } from "@/lib/useDismiss";
 import DatePicker from "./DatePicker";
+import { formatCurrency as fmtMoney, currencySymbol } from "@/lib/currency";
 
 export interface Expense {
   id: string;
@@ -18,21 +20,23 @@ interface ExpenseTrackerProps {
   expenses: Expense[];
   onAddExpense: (expense: Omit<Expense, "id">) => void;
   onDeleteExpense: (id: string) => void;
+  /** Account currency code (ISO 4217). */
+  currency?: string;
 }
 
 const CATEGORIES = [
-  { name: "Cleaning", icon: "🧹", color: "#81B29A" },
-  { name: "Utilities", icon: "⚡", color: "#F2CC8F" },
-  { name: "Maintenance & Repairs", icon: "🔧", color: "#E07A5F" },
-  { name: "Platform Fees", icon: "💳", color: "#118AB2" },
-  { name: "Insurance", icon: "🛡️", color: "#3D405B" },
-  { name: "Mortgage / Rent", icon: "🏦", color: "#6C63FF" },
-  { name: "Supplies", icon: "🛍️", color: "#06D6A0" },
-  { name: "Management", icon: "👤", color: "#EF476F" },
-  { name: "Furniture", icon: "🪑", color: "#FFD166" },
-  { name: "Marketing", icon: "📣", color: "#FF9F1C" },
-  { name: "Taxes", icon: "📋", color: "#2EC4B6" },
-  { name: "Other", icon: "📦", color: "#8B8B8B" },
+  { name: "Cleaning", abbr: "CL", color: "#81B29A" },
+  { name: "Utilities", abbr: "UT", color: "#F2CC8F" },
+  { name: "Maintenance & Repairs", abbr: "MR", color: "#E07A5F" },
+  { name: "Platform Fees", abbr: "PF", color: "#118AB2" },
+  { name: "Insurance", abbr: "IN", color: "#3D405B" },
+  { name: "Mortgage / Rent", abbr: "RE", color: "#6C63FF" },
+  { name: "Supplies", abbr: "SU", color: "#06D6A0" },
+  { name: "Management", abbr: "MG", color: "#EF476F" },
+  { name: "Furniture", abbr: "FU", color: "#FFD166" },
+  { name: "Marketing", abbr: "MK", color: "#FF9F1C" },
+  { name: "Taxes", abbr: "TX", color: "#2EC4B6" },
+  { name: "Other", abbr: "OT", color: "#8B8B8B" },
 ];
 
 const getCategoryMeta = (name: string) =>
@@ -40,13 +44,6 @@ const getCategoryMeta = (name: string) =>
 
 function formatDate(date: string) {
   return new Date(date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-}
-
-function formatCurrency(amount: number) {
-  return `KSh ${new Intl.NumberFormat("en-KE", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount)}`;
 }
 
 function monthKey(d: Date) {
@@ -66,10 +63,18 @@ export default function ExpenseTracker({
   expenses,
   onAddExpense,
   onDeleteExpense,
+  currency,
 }: ExpenseTrackerProps) {
+  const formatCurrency = (amount: number) => fmtMoney(amount, currency);
+  const symbol = currencySymbol(currency);
   const currentMonthKey = monthKey(new Date());
   const [selectedMonth, setSelectedMonth] = useState(currentMonthKey);
   const [showForm, setShowForm] = useState(false);
+  const formRef = useRef<HTMLDivElement>(null);
+  const closeForm = useCallback(() => setShowForm(false), []);
+  useDismissOnEscape(showForm, closeForm);
+  useDismissOnClickOutside(formRef, showForm, closeForm);
+
   const [filter, setFilter] = useState("All");
   const [sortBy, setSortBy] = useState<"date" | "amount">("date");
   const [form, setForm] = useState<Omit<Expense, "id">>({
@@ -182,7 +187,7 @@ export default function ExpenseTracker({
             {totalByCategory.slice(0, 6).map((cat) => (
               <div key={cat.name} className="breakdown-item">
                 <div className="breakdown-label">
-                  <span>{cat.icon} {cat.name}</span>
+                  <span>{cat.abbr} {cat.name}</span>
                   <span className="breakdown-amount">{formatCurrency(cat.total)}</span>
                 </div>
                 <div className="bar-track">
@@ -202,7 +207,7 @@ export default function ExpenseTracker({
 
       {/* Add form */}
       {showForm && (
-        <div className="add-form-card">
+        <div className="add-form-card" ref={formRef}>
           <h3 className="form-title">Log Expense</h3>
           <div className="form-grid">
             <div className="form-group">
@@ -214,7 +219,7 @@ export default function ExpenseTracker({
               />
             </div>
             <div className="form-group">
-              <label className="form-label">Amount (KSh)</label>
+              <label className="form-label">Amount ({symbol})</label>
               <input
                 type="number"
                 className="form-input"
@@ -242,7 +247,7 @@ export default function ExpenseTracker({
                     style={form.category === cat.name ? { borderColor: cat.color, background: `${cat.color}18`, color: cat.color } : {}}
                     onClick={() => setForm({ ...form, category: cat.name })}
                   >
-                    {cat.icon} {cat.name}
+                    {cat.abbr} {cat.name}
                   </button>
                 ))}
               </div>
@@ -288,7 +293,7 @@ export default function ExpenseTracker({
               style={filter === cat.name ? { borderColor: cat.color, color: cat.color } : {}}
               onClick={() => setFilter(cat.name)}
             >
-              {cat.icon} {cat.name}
+              {cat.abbr} {cat.name}
             </button>
           ))}
         </div>
@@ -306,7 +311,6 @@ export default function ExpenseTracker({
       <div className="expenses-list">
         {filtered.length === 0 ? (
           <div className="empty-expenses">
-            <span>📊</span>
             <p>
               {monthExpenses.length === 0
                 ? `No expenses logged for ${monthLabel(selectedMonth)}.`
@@ -329,7 +333,7 @@ export default function ExpenseTracker({
             return (
               <div key={expense.id} className="expense-row">
                 <div className="expense-cat-icon" style={{ background: `${meta.color}22`, color: meta.color }}>
-                  {meta.icon}
+                  {meta.abbr}
                 </div>
                 <div className="expense-info">
                   <span className="expense-desc">{expense.description}</span>
@@ -445,7 +449,7 @@ export default function ExpenseTracker({
         .exp-month-chip:hover { background: #243050; }
         .expense-row { background: #161924; border: 1px solid #1e2130; border-radius: 9px; padding: 12px 16px; display: flex; align-items: center; gap: 12px; transition: border-color 0.15s; }
         .expense-row:hover { border-color: #2a3050; }
-        .expense-cat-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+        .expense-cat-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; letter-spacing: 0.02em; flex-shrink: 0; }
         .expense-info { flex: 1; min-width: 0; }
         .expense-desc { display: block; font-size: 14px; color: #c8c3b8; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .expense-meta { display: block; font-size: 11px; color: #4a5068; margin-top: 2px; }

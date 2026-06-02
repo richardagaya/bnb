@@ -137,7 +137,7 @@ export default function DashboardPage() {
       <main className="app-main">
         {errorMsg && (
           <div className="error-banner">
-            <span>⚠ {errorMsg}</span>
+            <span>{errorMsg}</span>
             <button onClick={() => setErrorMsg(null)}>✕</button>
           </div>
         )}
@@ -166,7 +166,6 @@ export default function DashboardPage() {
               ☰
             </button>
             <div className="no-listing-content">
-              <span className="no-listing-icon">🏠</span>
               <h2>Welcome to Tractar</h2>
               <p>
                 Add your first property from the sidebar to start tracking

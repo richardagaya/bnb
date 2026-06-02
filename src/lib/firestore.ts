@@ -30,6 +30,8 @@ export type UserProfile = {
   email: string;
   name: string;
   photoURL?: string;
+  /** ISO 4217 currency code (e.g. "KES", "USD"). Defaults to KES when unset. */
+  currency?: string;
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
 };
@@ -124,10 +126,15 @@ export async function createUserProfile(profile: Omit<UserProfile, "createdAt" |
 }
 
 export async function updateUserProfile(uid: string, updates: Partial<Omit<UserProfile, "uid" | "createdAt">>) {
-  await updateDoc(doc(db, "users", uid), {
-    ...updates,
-    updatedAt: serverTimestamp(),
-  });
+  // Use a merge write so this succeeds even if the profile document doesn't exist yet.
+  await setDoc(
+    doc(db, "users", uid),
+    {
+      ...updates,
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true }
+  );
 }
 
 // ─── Listings ─────────────────────────────────────────────────────────────────

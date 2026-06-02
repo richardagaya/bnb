@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
+import { useDismissOnEscape, useDismissOnClickOutside } from "@/lib/useDismiss";
+import { formatCurrency as fmtMoney, currencySymbol } from "@/lib/currency";
 
 export interface Referral {
   id: string;
@@ -20,6 +22,10 @@ interface ReferralTrackerProps {
   onUpdateReferral: (id: string, updates: Partial<Referral>) => void;
   onDeleteReferral: (id: string) => void;
   accentColor?: string;
+  /** Date ("YYYY-MM-DD") to seed the new-referral form with, so entries land in the month being viewed. */
+  defaultDate?: string;
+  /** Account currency code (ISO 4217). */
+  currency?: string;
 }
 
 const PAYMENT_STATUSES = [
@@ -37,24 +43,19 @@ function fmtDate(d: string) {
   });
 }
 
-function fmtCurrency(n: number) {
-  return `KSh ${new Intl.NumberFormat("en-KE", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(n)}`;
-}
-
 const today = new Date().toISOString().split("T")[0];
 
-const EMPTY_FORM: Omit<Referral, "id" | "createdAt"> = {
-  date: today,
-  guestName: "",
-  referredTo: "",
-  commissionAmount: 0,
-  commissionReceived: 0,
-  paymentStatus: "pending",
-  notes: "",
-};
+function buildEmptyForm(seed?: string): Omit<Referral, "id" | "createdAt"> {
+  return {
+    date: seed ?? today,
+    guestName: "",
+    referredTo: "",
+    commissionAmount: 0,
+    commissionReceived: 0,
+    paymentStatus: "pending",
+    notes: "",
+  };
+}
 
 export default function ReferralTracker({
   referrals,
@@ -62,12 +63,24 @@ export default function ReferralTracker({
   onUpdateReferral,
   onDeleteReferral,
   accentColor = "#06D6A0",
+  defaultDate,
+  currency,
 }: ReferralTrackerProps) {
+  const fmtCurrency = (n: number) => fmtMoney(n, currency);
+  const symbol = currencySymbol(currency);
   const [showForm, setShowForm] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const formRef = useRef<HTMLDivElement>(null);
+
+  const closeForm = useCallback(() => setShowForm(false), []);
+  const closeDeleteConfirm = useCallback(() => setDeleteConfirm(null), []);
+  useDismissOnEscape(showForm, closeForm);
+  useDismissOnClickOutside(formRef, showForm, closeForm);
+  useDismissOnEscape(deleteConfirm !== null, closeDeleteConfirm);
+
   const [filterStatus, setFilterStatus] = useState<"All" | Referral["paymentStatus"]>("All");
-  const [form, setForm] = useState<Omit<Referral, "id" | "createdAt">>(EMPTY_FORM);
+  const [form, setForm] = useState<Omit<Referral, "id" | "createdAt">>(() => buildEmptyForm(defaultDate));
 
   const updateForm = (patch: Partial<typeof form>) => {
     setForm((prev) => {
@@ -88,8 +101,14 @@ export default function ReferralTracker({
   const handleSubmit = () => {
     if (!form.guestName.trim() || !form.referredTo.trim() || form.commissionAmount <= 0) return;
     onAddReferral({ ...form });
-    setForm({ ...EMPTY_FORM, date: today });
+    setForm(buildEmptyForm(defaultDate));
     setShowForm(false);
+  };
+
+  const openForm = () => {
+    setForm(buildEmptyForm(defaultDate));
+    setShowForm(true);
+    setExpandedId(null);
   };
 
   // ── Stats ──
@@ -115,9 +134,9 @@ export default function ReferralTracker({
         <button
           className="rf-btn-add"
           style={{ background: accentColor }}
-          onClick={() => { setShowForm(true); setExpandedId(null); }}
+          onClick={openForm}
         >
-          🤝 Log Referral
+          + Log Referral
         </button>
       </div>
 
@@ -147,7 +166,7 @@ export default function ReferralTracker({
 
       {/* ── Add Form ── */}
       {showForm && (
-        <div className="rf-form-card">
+        <div className="rf-form-card" ref={formRef}>
           <div className="rf-form-header">
             <h3 className="rf-form-title">Log a Referral</h3>
             <button className="rf-form-close" onClick={() => setShowForm(false)}>✕</button>
@@ -189,7 +208,7 @@ export default function ReferralTracker({
 
             {/* Commission amount */}
             <div className="rf-fg">
-              <label className="rf-label">Commission Agreed (KSh) *</label>
+              <label className="rf-label">Commission Agreed ({symbol}) *</label>
               <input
                 type="number"
                 min="0"
@@ -203,7 +222,7 @@ export default function ReferralTracker({
             {/* Commission received */}
             <div className="rf-fg">
               <label className="rf-label">
-                Commission Received (KSh)
+                Commission Received ({symbol})
                 {form.paymentStatus === "received" && (
                   <span className="rf-label-hint"> — auto-filled</span>
                 )}
@@ -297,7 +316,6 @@ export default function ReferralTracker({
       <div className="rf-list">
         {filtered.length === 0 ? (
           <div className="rf-empty">
-            <span>🤝</span>
             <p>
               No referrals logged yet. When you&apos;re fully booked and send a guest elsewhere, log it here and track the commission you earn.
             </p>
@@ -313,7 +331,7 @@ export default function ReferralTracker({
                 {/* Top row */}
                 <div className="rf-card-top">
                   <div className="rf-card-left">
-                    <span className="rf-referral-badge">🤝 Referral</span>
+                    <span className="rf-referral-badge">Referral</span>
                     <span
                       className="rf-status-badge"
                       style={{ background: `${pmt.color}1A`, color: pmt.color, borderColor: `${pmt.color}44` }}
@@ -330,7 +348,7 @@ export default function ReferralTracker({
                           commissionReceived: r.commissionAmount,
                         })}
                       >
-                        ✓ Mark Received
+                        Mark Received
                       </button>
                     )}
                     <button
@@ -392,7 +410,7 @@ export default function ReferralTracker({
                   <div className="rf-card-expanded">
                     {r.notes ? (
                       <div className="rf-notes-block">
-                        <span className="rf-notes-label">📝 Notes</span>
+                        <span className="rf-notes-label">Notes</span>
                         <p className="rf-notes-text">{r.notes}</p>
                       </div>
                     ) : (

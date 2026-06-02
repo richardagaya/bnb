@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
+import { useDismissOnEscape, useDismissOnClickOutside } from "@/lib/useDismiss";
 
 export interface Listing {
   id: string;
@@ -45,6 +46,11 @@ export default function ListingsSidebar({
   onClose,
 }: ListingsSidebarProps) {
   const [showForm, setShowForm] = useState(false);
+  const formRef = useRef<HTMLDivElement>(null);
+  const closeForm = useCallback(() => setShowForm(false), []);
+  useDismissOnEscape(showForm, closeForm);
+  useDismissOnClickOutside(formRef, showForm, closeForm);
+
   const [form, setForm] = useState({
     name: "",
     address: "",
@@ -77,7 +83,6 @@ export default function ListingsSidebar({
       <nav className="listings-nav">
         {listings.length === 0 && !showForm && (
           <div className="empty-state">
-            <span className="empty-icon">🏡</span>
             <p>No listings yet.<br />Add your first property.</p>
           </div>
         )}
@@ -105,7 +110,7 @@ export default function ListingsSidebar({
 
       <div className="sidebar-footer">
         {showForm ? (
-          <div className="add-listing-form">
+          <div className="add-listing-form" ref={formRef}>
             <p className="form-title">New Property</p>
             <input
               className="form-input"
@@ -164,7 +169,6 @@ export default function ListingsSidebar({
           rel="noopener noreferrer"
           className="feedback-btn"
         >
-          <span className="feedback-icon">💬</span>
           <span>Share Feedback</span>
         </a>
       </div>
@@ -290,6 +294,17 @@ export default function ListingsSidebar({
         }
         .listing-item.active {
           background: #161924;
+        }
+        .listing-item:focus-visible {
+          outline: 2px solid #81b29a;
+          outline-offset: -2px;
+        }
+        .add-listing-btn:focus-visible,
+        .btn-add:focus-visible,
+        .sidebar-sign-out:focus-visible,
+        .sidebar-close-btn:focus-visible {
+          outline: 2px solid #81b29a;
+          outline-offset: 2px;
         }
         .listing-color-dot {
           width: 8px;

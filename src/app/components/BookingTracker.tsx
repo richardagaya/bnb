@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
+import { useDismissOnEscape, useDismissOnClickOutside } from "@/lib/useDismiss";
 import DatePicker from "./DatePicker";
+import { formatCurrency as fmtMoney, currencySymbol } from "@/lib/currency";
 
 export interface Booking {
   id: string;
@@ -25,17 +27,21 @@ interface BookingTrackerProps {
   onUpdateBooking: (id: string, updates: Partial<Booking>) => void;
   onDeleteBooking: (id: string) => void;
   accentColor?: string;
+  /** Date ("YYYY-MM-DD") to seed the new-booking form with, so entries land in the month being viewed. */
+  defaultDate?: string;
+  /** Account currency code (ISO 4217). */
+  currency?: string;
 }
 
 const SOURCES = [
-  { name: "Airbnb", icon: "🏠", color: "#FF5A5F" },
-  { name: "Booking.com", icon: "🔵", color: "#003580" },
-  { name: "VRBO", icon: "🏡", color: "#1A8FFF" },
-  { name: "Agoda", icon: "🌏", color: "#E8000B" },
-  { name: "Expedia", icon: "✈️", color: "#FFC72C" },
-  { name: "Direct / Walk-in", icon: "🤝", color: "#81B29A" },
-  { name: "WhatsApp / Phone", icon: "📱", color: "#25D366" },
-  { name: "Other", icon: "📋", color: "#8B8B8B" },
+  { name: "Airbnb", abbr: "AB", color: "#FF5A5F" },
+  { name: "Booking.com", abbr: "BC", color: "#003580" },
+  { name: "VRBO", abbr: "VR", color: "#1A8FFF" },
+  { name: "Agoda", abbr: "AG", color: "#E8000B" },
+  { name: "Expedia", abbr: "EX", color: "#FFC72C" },
+  { name: "Direct / Walk-in", abbr: "DR", color: "#81B29A" },
+  { name: "WhatsApp / Phone", abbr: "WA", color: "#25D366" },
+  { name: "Other", abbr: "OT", color: "#8B8B8B" },
 ];
 
 const BOOKING_STATUSES = [
@@ -53,8 +59,8 @@ const PAYMENT_STATUSES = [
 
 const sourceColor = (name: string) =>
   SOURCES.find((s) => s.name === name)?.color ?? "#8B8B8B";
-const sourceIcon = (name: string) =>
-  SOURCES.find((s) => s.name === name)?.icon ?? "📋";
+const sourceAbbr = (name: string) =>
+  SOURCES.find((s) => s.name === name)?.abbr ?? "??";
 const statusMeta = (v: string) =>
   BOOKING_STATUSES.find((s) => s.value === v) ?? BOOKING_STATUSES[0];
 const paymentMeta = (v: string) =>
@@ -71,27 +77,25 @@ function fmtDate(d: string) {
   });
 }
 
-function fmtCurrency(n: number) {
-  return `KSh ${new Intl.NumberFormat("en-KE", { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n)}`;
+function buildEmptyForm(seed?: string): Omit<Booking, "id" | "createdAt"> {
+  const checkIn = seed ?? new Date().toISOString().split("T")[0];
+  const next = new Date(checkIn + "T00:00:00");
+  next.setDate(next.getDate() + 1);
+  const checkOut = next.toISOString().split("T")[0];
+  return {
+    guestName: "",
+    checkIn,
+    checkOut,
+    nights: 1,
+    source: "Direct / Walk-in",
+    status: "confirmed",
+    paymentStatus: "paid",
+    chargeAmount: 0,
+    discountAmount: 0,
+    amountPaid: 0,
+    notes: "",
+  };
 }
-
-const EMPTY_FORM: Omit<Booking, "id" | "createdAt"> = {
-  guestName: "",
-  checkIn: new Date().toISOString().split("T")[0],
-  checkOut: (() => {
-    const d = new Date();
-    d.setDate(d.getDate() + 1);
-    return d.toISOString().split("T")[0];
-  })(),
-  nights: 1,
-  source: "Direct / Walk-in",
-  status: "confirmed",
-  paymentStatus: "paid",
-  chargeAmount: 0,
-  discountAmount: 0,
-  amountPaid: 0,
-  notes: "",
-};
 
 export default function BookingTracker({
   bookings,
@@ -99,7 +103,11 @@ export default function BookingTracker({
   onUpdateBooking,
   onDeleteBooking,
   accentColor = "#81B29A",
+  defaultDate,
+  currency,
 }: BookingTrackerProps) {
+  const fmtCurrency = (n: number) => fmtMoney(n, currency);
+  const symbol = currencySymbol(currency);
   const [showForm, setShowForm] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [filterSource, setFilterSource] = useState("All");
@@ -107,8 +115,15 @@ export default function BookingTracker({
   const [filterStatus, setFilterStatus] = useState("All");
   const [sortBy, setSortBy] = useState<"date" | "amount">("date");
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const formRef = useRef<HTMLDivElement>(null);
 
-  const [form, setForm] = useState<Omit<Booking, "id" | "createdAt">>(EMPTY_FORM);
+  const closeForm = useCallback(() => setShowForm(false), []);
+  const closeDeleteConfirm = useCallback(() => setDeleteConfirm(null), []);
+  useDismissOnEscape(showForm, closeForm);
+  useDismissOnClickOutside(formRef, showForm, closeForm);
+  useDismissOnEscape(deleteConfirm !== null, closeDeleteConfirm);
+
+  const [form, setForm] = useState<Omit<Booking, "id" | "createdAt">>(() => buildEmptyForm(defaultDate));
 
   const updateForm = (patch: Partial<typeof form>) => {
     setForm((prev) => {
@@ -133,8 +148,14 @@ export default function BookingTracker({
   const handleSubmit = () => {
     if (!form.guestName.trim() || form.chargeAmount <= 0) return;
     onAddBooking({ ...form, nights: nightsBetween(form.checkIn, form.checkOut) });
-    setForm(EMPTY_FORM);
+    setForm(buildEmptyForm(defaultDate));
     setShowForm(false);
+  };
+
+  const openForm = () => {
+    setForm(buildEmptyForm(defaultDate));
+    setShowForm(true);
+    setExpandedId(null);
   };
 
   // ── Stats ──────────────────────────────────────────────────────────────────
@@ -169,7 +190,7 @@ export default function BookingTracker({
           <h2 className="bk-title">Bookings</h2>
           <p className="bk-desc">Track every booking, its source, payment and notes in one place.</p>
         </div>
-        <button className="bk-btn-add" onClick={() => { setShowForm(true); setExpandedId(null); }}>
+        <button className="bk-btn-add" onClick={openForm}>
           + Add Booking
         </button>
       </div>
@@ -200,7 +221,7 @@ export default function BookingTracker({
 
       {/* ── Add Booking Form ── */}
       {showForm && (
-        <div className="bk-form-card">
+        <div className="bk-form-card" ref={formRef}>
           <div className="bk-form-header">
             <h3 className="bk-form-title">New Booking</h3>
             <button className="bk-form-close" onClick={() => setShowForm(false)}>✕</button>
@@ -243,7 +264,7 @@ export default function BookingTracker({
             {/* Nights display */}
             <div className="bk-fg bk-fg-full">
               <div className="bk-nights-badge">
-                🌙 {nightsBetween(form.checkIn, form.checkOut)} night{nightsBetween(form.checkIn, form.checkOut) !== 1 ? "s" : ""}
+                {nightsBetween(form.checkIn, form.checkOut)} night{nightsBetween(form.checkIn, form.checkOut) !== 1 ? "s" : ""}
               </div>
             </div>
 
@@ -258,7 +279,7 @@ export default function BookingTracker({
                     style={form.source === s.name ? { borderColor: s.color, background: `${s.color}18`, color: s.color } : {}}
                     onClick={() => updateForm({ source: s.name })}
                   >
-                    {s.icon} {s.name}
+                    <span className="bk-source-abbr" style={{ color: s.color }}>{s.abbr}</span> {s.name}
                   </button>
                 ))}
               </div>
@@ -300,7 +321,7 @@ export default function BookingTracker({
 
             {/* Amounts */}
             <div className="bk-fg">
-              <label className="bk-label">Charge Amount (KSh) *</label>
+              <label className="bk-label">Charge Amount ({symbol}) *</label>
               <input
                 type="number"
                 min="0"
@@ -311,7 +332,7 @@ export default function BookingTracker({
               />
             </div>
             <div className="bk-fg">
-              <label className="bk-label">Discount Given (KSh)</label>
+              <label className="bk-label">Discount Given ({symbol})</label>
               <input
                 type="number"
                 min="0"
@@ -323,7 +344,7 @@ export default function BookingTracker({
             </div>
             <div className="bk-fg bk-fg-full">
               <label className="bk-label">
-                Amount Paid (KSh)
+                Amount Paid ({symbol})
                 {form.paymentStatus === "paid" && <span className="bk-label-hint"> — auto-calculated</span>}
               </label>
               <input
@@ -398,7 +419,7 @@ export default function BookingTracker({
                     style={filterSource === src ? { borderColor: sourceColor(src), color: sourceColor(src) } : {}}
                     onClick={() => setFilterSource(src)}
                   >
-                    {sourceIcon(src)} {src}
+                    {sourceAbbr(src)} {src}
                   </button>
                 ))}
                 <span className="bk-chip-sep">|</span>
@@ -431,7 +452,6 @@ export default function BookingTracker({
       <div className="bk-list">
         {filtered.length === 0 ? (
           <div className="bk-empty">
-            <span>📋</span>
             <p>No bookings recorded yet. Add your first booking to start tracking revenue.</p>
           </div>
         ) : (
@@ -453,7 +473,7 @@ export default function BookingTracker({
                       className="bk-source-badge"
                       style={{ background: `${src?.color ?? "#8B8B8B"}1A`, color: src?.color ?? "#8B8B8B", borderColor: `${src?.color ?? "#8B8B8B"}44` }}
                     >
-                      {src?.icon} {b.source}
+                      <span className="bk-source-abbr" style={{ color: src?.color }}>{src?.abbr ?? sourceAbbr(b.source)}</span> {b.source}
                     </span>
                     {/* Status badge */}
                     <span
@@ -476,7 +496,7 @@ export default function BookingTracker({
                         className="bk-action-btn bk-mark-paid"
                         onClick={() => onUpdateBooking(b.id, { paymentStatus: "paid", amountPaid: net })}
                       >
-                        ✓ Mark Paid
+                        Mark Paid
                       </button>
                     )}
                     <button
@@ -507,7 +527,7 @@ export default function BookingTracker({
                   <div className="bk-card-guest">{b.guestName}</div>
                   <div className="bk-card-dates">
                     {fmtDate(b.checkIn)} → {fmtDate(b.checkOut)}
-                    <span className="bk-nights-pill">🌙 {b.nights} night{b.nights !== 1 ? "s" : ""}</span>
+                    <span className="bk-nights-pill">{b.nights} night{b.nights !== 1 ? "s" : ""}</span>
                   </div>
                 </div>
 
@@ -556,7 +576,7 @@ export default function BookingTracker({
                     </div>
                     {b.notes ? (
                       <div className="bk-notes-block">
-                        <span className="bk-notes-label">📝 Notes</span>
+                        <span className="bk-notes-label">Notes</span>
                         <p className="bk-notes-text">{b.notes}</p>
                       </div>
                     ) : (
@@ -862,6 +882,12 @@ export default function BookingTracker({
         .bk-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; flex-wrap: wrap; }
         .bk-card-left { display: flex; gap: 7px; flex-wrap: wrap; align-items: center; }
 
+        .bk-source-abbr {
+          font-size: 10px;
+          font-weight: 800;
+          letter-spacing: 0.02em;
+          opacity: 0.95;
+        }
         .bk-source-badge, .bk-status-badge {
           display: inline-flex;
           align-items: center;

@@ -1,12 +1,17 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import CalendarSync, { CalendarSource } from "./CalendarSync";
 import FinancialCalculator, { FinancialData } from "./FinancialCalculator";
 import ExpenseTracker, { Expense } from "./ExpenseTracker";
 import BookingTracker, { Booking } from "./BookingTracker";
 import ReferralTracker, { Referral } from "./ReferralTracker";
+import MonthNav from "./MonthNav";
 import { Listing } from "./ListingsSidebar";
+import { useNotifications } from "@/contexts/NotificationContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { formatCurrency as fmtMoney, CURRENCIES } from "@/lib/currency";
+import { useDismissOnEscape } from "@/lib/useDismiss";
 import {
   getFinancialData,
   setFinancialData as fsSetFinancialData,
@@ -45,13 +50,6 @@ interface ListingDashboardProps {
   onDeleteListing?: () => void;
 }
 
-function formatCurrency(value: number) {
-  return `KSh ${new Intl.NumberFormat("en-KE", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value)}`;
-}
-
 const DEFAULT_FINANCIAL_DATA: FinancialData = {
   furnitureCost: 0,
   transportCost: 0,
@@ -68,15 +66,15 @@ const DEFAULT_FINANCIAL_DATA: FinancialData = {
 };
 
 const TABS = [
-  { id: "overview",  label: "Overview",      icon: "📊" },
-  { id: "financials",label: "Financials",    icon: "💰" },
-  { id: "bookings",  label: "Bookings",      icon: "📋" },
-  { id: "referrals", label: "Referrals",     icon: "🤝" },
-  { id: "summary",   label: "Summary",       icon: "📈" },
-  { id: "expenses",  label: "Expenses",      icon: "🧾" },
-  { id: "calendar",  label: "Calendar Sync", icon: "📅" },
-  { id: "settings",  label: "Settings",      icon: "⚙️" },
-];
+  { id: "overview", label: "Overview" },
+  { id: "financials", label: "Financials" },
+  { id: "bookings", label: "Bookings" },
+  { id: "referrals", label: "Referrals" },
+  { id: "summary", label: "Summary" },
+  { id: "expenses", label: "Expenses" },
+  { id: "calendar", label: "Calendar" },
+  { id: "settings", label: "Settings" },
+] as const;
 
 const LISTING_COLORS = [
   "#E07A5F", "#3D405B", "#81B29A", "#F2CC8F",
@@ -95,6 +93,20 @@ export default function ListingDashboard({
   onUpdateListing,
   onDeleteListing,
 }: ListingDashboardProps) {
+  const { toast, persist } = useNotifications();
+  const { user, updateCurrency } = useAuth();
+  const currency = user?.currency;
+
+  const handleCurrencyChange = async (code: string) => {
+    if (code === currency) return;
+    try {
+      await updateCurrency(code);
+      toast.success(`Currency updated to ${code}.`);
+    } catch {
+      toast.error("Couldn't save your currency preference.");
+    }
+  };
+  const formatCurrency = (value: number) => fmtMoney(value, currency);
   const [activeTab, setActiveTab] = useState("overview");
 
   // ── Overview month filter ──
@@ -102,7 +114,20 @@ export default function ListingDashboard({
     const t = new Date();
     return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}`;
   });
-  const [showMonthPicker, setShowMonthPicker] = useState(false);
+
+  // ── Bookings & Referrals month filters ──
+  const currentMonthKey = (() => {
+    const t = new Date();
+    return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}`;
+  })();
+  const [bookingsMonth, setBookingsMonth] = useState<string>(currentMonthKey);
+  const [referralsMonth, setReferralsMonth] = useState<string>(currentMonthKey);
+
+  // First day of a "YYYY-MM" month, or today if it's the current month, for seeding new entries.
+  const seedDateForMonth = (monthKey: string) =>
+    monthKey === currentMonthKey
+      ? new Date().toISOString().split("T")[0]
+      : `${monthKey}-01`;
 
   // ── Summary monthly history ──
   const [summaryExpandedMonths, setSummaryExpandedMonths] = useState<Set<string>>(() => {
@@ -237,9 +262,13 @@ export default function ListingDashboard({
     if (!fsLoaded.current) return;
     clearTimeout(finSaveTimer.current);
     finSaveTimer.current = setTimeout(() => {
-      fsSetFinancialData(uid, listing.id, financialData as unknown as Record<string, unknown>).catch(() => {});
+      persist(
+        fsSetFinancialData(uid, listing.id, financialData as unknown as Record<string, unknown>),
+        { error: "Couldn't save your financials to the cloud — they're kept on this device." }
+      );
     }, 800);
     return () => clearTimeout(finSaveTimer.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [financialData, uid, listing.id]);
 
   // ── Sync calendarSources → Firestore (debounced 400 ms) ──────────────────
@@ -247,9 +276,13 @@ export default function ListingDashboard({
     if (!fsLoaded.current) return;
     clearTimeout(calSaveTimer.current);
     calSaveTimer.current = setTimeout(() => {
-      fsSetCalendarSources(uid, listing.id, calendarSources as FSCalendarSource[]).catch(() => {});
+      persist(
+        fsSetCalendarSources(uid, listing.id, calendarSources as FSCalendarSource[]),
+        { error: "Couldn't save your calendar settings to the cloud." }
+      );
     }, 400);
     return () => clearTimeout(calSaveTimer.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [calendarSources, uid, listing.id]);
 
   // Settings form state — kept in sync with the listing prop
@@ -262,12 +295,32 @@ export default function ListingDashboard({
   const [settingsSaved, setSettingsSaved] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
+  const closeDeleteConfirm = useCallback(() => setShowDeleteConfirm(false), []);
+  useDismissOnEscape(showDeleteConfirm, closeDeleteConfirm);
+
   const handleSettingsSave = () => {
     if (!settingsForm.name.trim()) return;
     onUpdateListing?.(settingsForm);
     setSettingsSaved(true);
     setTimeout(() => setSettingsSaved(false), 2500);
   };
+
+  const handleTabKeyDown = useCallback((e: React.KeyboardEvent, tabId: string) => {
+    const idx = TABS.findIndex((t) => t.id === tabId);
+    if (idx < 0) return;
+    let next = idx;
+    if (e.key === "ArrowRight") next = (idx + 1) % TABS.length;
+    else if (e.key === "ArrowLeft") next = (idx - 1 + TABS.length) % TABS.length;
+    else if (e.key === "Home") next = 0;
+    else if (e.key === "End") next = TABS.length - 1;
+    else return;
+    e.preventDefault();
+    const nextId = TABS[next].id;
+    setActiveTab(nextId);
+    requestAnimationFrame(() => {
+      document.getElementById(`tab-${nextId}`)?.focus();
+    });
+  }, []);
 
   const addCalendarSource = (source: Omit<CalendarSource, "id" | "lastSynced" | "status">) => {
     setCalendarSources((prev) => [
@@ -329,67 +382,57 @@ export default function ListingDashboard({
   };
 
   const addExpense = async (expense: Omit<Expense, "id">) => {
-    try {
-      const id = await fsAddExpense(uid, listing.id, expense);
-      setExpenses((prev) => [...prev, { ...expense, id }]);
-    } catch {
-      // Fallback to local ID if Firestore is unavailable
-      setExpenses((prev) => [...prev, { ...expense, id: Date.now().toString() }]);
-    }
+    const id = await persist(fsAddExpense(uid, listing.id, expense), {
+      error: "Couldn't save the expense to the cloud — it's stored on this device.",
+    });
+    // Fallback to a local ID if Firestore is unavailable
+    setExpenses((prev) => [...prev, { ...expense, id: id ?? Date.now().toString() }]);
+    if (id) toast.success("Expense added.");
   };
 
   const deleteExpense = (id: string) => {
     setExpenses((prev) => prev.filter((e) => e.id !== id));
-    fsDeleteExpense(uid, listing.id, id).catch(() => {});
+    persist(fsDeleteExpense(uid, listing.id, id), { error: "Couldn't delete the expense from the cloud." });
   };
 
   const addBooking = async (booking: Omit<Booking, "id" | "createdAt">) => {
     const createdAt = new Date().toISOString();
-    try {
-      const id = await fsAddBooking(uid, listing.id, { ...booking, createdAt });
-      setBookings((prev) => [...prev, { ...booking, id, createdAt }]);
-    } catch {
-      setBookings((prev) => [
-        ...prev,
-        { ...booking, id: Date.now().toString(), createdAt },
-      ]);
-    }
+    const id = await persist(fsAddBooking(uid, listing.id, { ...booking, createdAt }), {
+      error: "Couldn't save the booking to the cloud — it's stored on this device.",
+    });
+    setBookings((prev) => [...prev, { ...booking, id: id ?? Date.now().toString(), createdAt }]);
+    if (id) toast.success("Booking added.");
   };
 
   const updateBooking = (id: string, updates: Partial<Booking>) => {
     setBookings((prev) => prev.map((b) => (b.id === id ? { ...b, ...updates } : b)));
-    fsUpdateBooking(uid, listing.id, id, updates).catch(() => {});
+    persist(fsUpdateBooking(uid, listing.id, id, updates), { error: "Couldn't update the booking in the cloud." });
   };
 
   const deleteBooking = (id: string) => {
     setBookings((prev) => prev.filter((b) => b.id !== id));
-    fsDeleteBooking(uid, listing.id, id).catch(() => {});
+    persist(fsDeleteBooking(uid, listing.id, id), { error: "Couldn't delete the booking from the cloud." });
   };
 
   const addReferral = async (referral: Omit<Referral, "id" | "createdAt">) => {
     const createdAt = new Date().toISOString();
-    try {
-      const id = await fsAddReferral(uid, listing.id, { ...referral, createdAt });
-      setReferrals((prev) => [...prev, { ...referral, id, createdAt }]);
-    } catch {
-      setReferrals((prev) => [
-        ...prev,
-        { ...referral, id: Date.now().toString(), createdAt },
-      ]);
-    }
+    const id = await persist(fsAddReferral(uid, listing.id, { ...referral, createdAt }), {
+      error: "Couldn't save the referral to the cloud — it's stored on this device.",
+    });
+    setReferrals((prev) => [...prev, { ...referral, id: id ?? Date.now().toString(), createdAt }]);
+    if (id) toast.success("Referral added.");
   };
 
   const updateReferral = (id: string, updates: Partial<Referral>) => {
     setReferrals((prev) => prev.map((r) => (r.id === id ? { ...r, ...updates } : r)));
-    fsUpdateReferral(uid, listing.id, id, updates).catch(() => {});
+    persist(fsUpdateReferral(uid, listing.id, id, updates), { error: "Couldn't update the referral in the cloud." });
   };
 
   const deleteReferral = (id: string) => {
     setReferrals((prev) => prev.filter((r) => r.id !== id));
-    fsDeleteReferral(uid, listing.id, id).catch(() => {});
+    persist(fsDeleteReferral(uid, listing.id, id), { error: "Couldn't delete the referral from the cloud." });
   };
 
-  const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
   const totalSetupCost =
     financialData.furnitureCost +
     financialData.transportCost +
@@ -424,41 +467,38 @@ export default function ListingDashboard({
             <h1 className="listing-name">{listing.name}</h1>
             <span className="listing-type-badge">{listing.type}</span>
           </div>
-          {listing.address && <p className="listing-address">📍 {listing.address}</p>}
-        </div>
-        <div className="listing-quick-stats">
-          <div className="quick-stat">
-            <span className="qs-value">{calendarSources.length}</span>
-            <span className="qs-label">Channels</span>
-          </div>
-          <div className="quick-stat">
-            <span className="qs-value">{expenses.length}</span>
-            <span className="qs-label">Expenses</span>
-          </div>
-          <div className="quick-stat">
-            <span className="qs-value">{formatCurrency(totalSetupCost)}</span>
-            <span className="qs-label">Setup Budget</span>
-          </div>
+          {listing.address && <p className="listing-address">{listing.address}</p>}
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="tabs-bar">
+      <div className="tabs-bar" role="tablist" aria-label="Property sections">
         {TABS.map((tab) => (
           <button
             key={tab.id}
+            id={`tab-${tab.id}`}
+            role="tab"
+            type="button"
+            aria-selected={activeTab === tab.id}
+            aria-controls={`panel-${tab.id}`}
+            tabIndex={activeTab === tab.id ? 0 : -1}
             className={`tab-item ${activeTab === tab.id ? "active" : ""}`}
             style={activeTab === tab.id ? { borderBottomColor: listing.color } : {}}
             onClick={() => setActiveTab(tab.id)}
+            onKeyDown={(e) => handleTabKeyDown(e, tab.id)}
           >
-            <span>{tab.icon}</span>
-            <span>{tab.label}</span>
+            {tab.label}
           </button>
         ))}
       </div>
 
       {/* Tab Content */}
-      <div className="tab-content">
+      <div
+        className="tab-content"
+        role="tabpanel"
+        id={`panel-${activeTab}`}
+        aria-labelledby={`tab-${activeTab}`}
+      >
         {activeTab === "overview" && (() => {
           const now            = new Date();
           const todayKey       = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
@@ -470,11 +510,6 @@ export default function ListingDashboard({
           const [ovYear, ovMon] = overviewMonth.split("-").map(Number);
           const ovDate    = new Date(ovYear, ovMon - 1, 1);
           const monthName = ovDate.toLocaleDateString("en-US", { month: "long", year: "numeric" });
-
-          const shiftOvMonth = (delta: number) => {
-            const d = new Date(ovYear, ovMon - 1 + delta, 1);
-            setOverviewMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
-          };
 
           // Collect months that have any data (for the mini dot strip)
           const dataMonths = new Set<string>();
@@ -498,19 +533,12 @@ export default function ListingDashboard({
           const displayProfit  = hasBookings ? actualProfit : 0;
           const profitIsActual = hasBookings;
 
-          // Build a 12-month strip (current month ± 5) for the month picker
-          const stripMonths: string[] = [];
-          for (let i = -5; i <= 6; i++) {
-            const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
-            stripMonths.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
-          }
-
           return (
             <div className="ov2-root">
               {/* ── Greeting banner ── */}
               <div className="ov2-greeting" style={{ borderColor: `${listing.color}33`, background: `${listing.color}08` }}>
                 <div className="ov2-greeting-left">
-                  {isCurrentMonth && <p className="ov2-hello">{greeting} 👋</p>}
+                  {isCurrentMonth && <p className="ov2-hello">{greeting}</p>}
                   <h2 className="ov2-tagline">
                     Let&apos;s see your books<span className="ov2-tagline-month"> — {monthName}</span>
                   </h2>
@@ -530,63 +558,17 @@ export default function ListingDashboard({
                 </div>
               </div>
 
-              {/* ── Month navigation ── */}
-              <div className="ov2-month-nav">
-                <button className="ov2-mn-arrow" onClick={() => { shiftOvMonth(-1); setShowMonthPicker(false); }} title="Previous month">‹</button>
-
-                <div className="ov2-mn-picker-wrap">
-                  <button
-                    className={`ov2-mn-filter-btn${showMonthPicker ? " open" : ""}`}
-                    onClick={() => setShowMonthPicker(v => !v)}
-                  >
-                    <span className="ov2-mn-filter-label">{monthName}</span>
-                    {hasBookings && <span className="ov2-mn-filter-dot" />}
-                    <span className="ov2-mn-filter-chevron">{showMonthPicker ? "▲" : "▼"}</span>
-                  </button>
-
-                  {showMonthPicker && (
-                    <>
-                      <div className="ov2-picker-backdrop" onClick={() => setShowMonthPicker(false)} />
-                      <div className="ov2-picker-dropdown">
-                        {stripMonths.map(mk => {
-                          const [y, m] = mk.split("-").map(Number);
-                          const fullLabel = new Date(y, m - 1, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
-                          const isSelected = mk === overviewMonth;
-                          const isToday    = mk === todayKey;
-                          const hasData    = dataMonths.has(mk);
-                          return (
-                            <button
-                              key={mk}
-                              className={`ov2-picker-item${isSelected ? " selected" : ""}${isToday ? " today" : ""}`}
-                              onClick={() => { setOverviewMonth(mk); setShowMonthPicker(false); }}
-                            >
-                              <span className="ov2-picker-item-label">{fullLabel}</span>
-                              <span className="ov2-picker-item-right">
-                                {isToday && <span className="ov2-picker-tag">Current</span>}
-                                {hasData && <span className="ov2-picker-data-dot" />}
-                              </span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                <button className="ov2-mn-arrow" onClick={() => { shiftOvMonth(1); setShowMonthPicker(false); }} title="Next month">›</button>
-
-                {!isCurrentMonth && (
-                  <button className="ov2-mn-today" onClick={() => { setOverviewMonth(todayKey); setShowMonthPicker(false); }}>
-                    Today
-                  </button>
-                )}
-              </div>
+              <MonthNav
+                month={overviewMonth}
+                onChange={setOverviewMonth}
+                accentColor={listing.color}
+                dataMonths={dataMonths}
+              />
 
               {/* ── 4 KPI cards ── */}
               <div className="ov2-cards">
                 {/* Setup Budget */}
                 <div className="ov2-card">
-                  <div className="ov2-card-icon">💰</div>
                   <div className="ov2-card-label">Total Setup Budget</div>
                   <div className="ov2-card-value">{formatCurrency(totalSetupCost)}</div>
                   <div className="ov2-card-sub">
@@ -596,7 +578,6 @@ export default function ListingDashboard({
 
                 {/* Price per stay */}
                 <div className="ov2-card">
-                  <div className="ov2-card-icon">🛏️</div>
                   <div className="ov2-card-label">Price Per Stay</div>
                   <div className="ov2-card-value">{formatCurrency(financialData.chargePerStay)}</div>
                   <div className="ov2-card-sub">
@@ -608,7 +589,6 @@ export default function ListingDashboard({
 
                 {/* Projected sales */}
                 <div className="ov2-card" style={{ borderColor: "#81b29a22" }}>
-                  <div className="ov2-card-icon">📈</div>
                   <div className="ov2-card-label">Projected Sales — {monthName}</div>
                   <div className="ov2-card-value" style={{ color: "#81b29a" }}>{formatCurrency(projectedSales)}</div>
                   <div className="ov2-card-sub">
@@ -624,7 +604,6 @@ export default function ListingDashboard({
 
                 {/* Profit */}
                 <div className="ov2-card" style={{ borderColor: displayProfit >= 0 ? "#81b29a22" : "#e07a5f22", background: displayProfit >= 0 ? "#0f1a1488" : "#1a100f88" }}>
-                  <div className="ov2-card-icon">{displayProfit >= 0 ? "✅" : "⚠️"}</div>
                   <div className="ov2-card-label">
                     {profitIsActual ? "Actual Profit" : "Projected Profit"} — {monthName}
                   </div>
@@ -649,7 +628,6 @@ export default function ListingDashboard({
               {/* ── Quick-action row ── */}
               <div className="ov2-cta-row">
                 <button className="ov2-cta" onClick={() => setActiveTab("bookings")}>
-                  <span>📋</span>
                   <div>
                     <div className="cta-title">Log a Booking</div>
                     <div className="cta-desc">Add guest, dates, payment status</div>
@@ -657,7 +635,6 @@ export default function ListingDashboard({
                   <span className="cta-arrow">→</span>
                 </button>
                 <button className="ov2-cta" onClick={() => setActiveTab("referrals")}>
-                  <span>🤝</span>
                   <div>
                     <div className="cta-title">Log a Referral</div>
                     <div className="cta-desc">Track commissions from referring guests</div>
@@ -665,7 +642,6 @@ export default function ListingDashboard({
                   <span className="cta-arrow">→</span>
                 </button>
                 <button className="ov2-cta" onClick={() => setActiveTab("expenses")}>
-                  <span>🧾</span>
                   <div>
                     <div className="cta-title">Log an Expense</div>
                     <div className="cta-desc">Track costs for {monthName}</div>
@@ -673,7 +649,6 @@ export default function ListingDashboard({
                   <span className="cta-arrow">→</span>
                 </button>
                 <button className="ov2-cta" onClick={() => setActiveTab("summary")}>
-                  <span>📊</span>
                   <div>
                     <div className="cta-title">View Full P&amp;L History</div>
                     <div className="cta-desc">Every month saved automatically</div>
@@ -686,7 +661,7 @@ export default function ListingDashboard({
         })()}
 
         {activeTab === "financials" && (
-          <FinancialCalculator data={financialData} onChange={setFinancialData} />
+          <FinancialCalculator data={financialData} onChange={setFinancialData} currency={currency} />
         )}
 
         {activeTab === "summary" && (() => {
@@ -759,7 +734,6 @@ export default function ListingDashboard({
               {/* Setup prompt */}
               {bookings.filter((b) => b.status !== "cancelled").length === 0 && expenses.length === 0 && (
                 <div className="ms-empty">
-                  <span>📊</span>
                   <p>
                     Set up your{" "}
                     <button className="ms-link" onClick={() => setActiveTab("financials")}>Financials</button>,
@@ -837,8 +811,8 @@ export default function ListingDashboard({
                             {month.mReferrals.map((r) => (
                               <div key={r.id} className="ms-row">
                                 <span className="ms-row-name">
-                                  🤝 {r.guestName}
-                                  <span className="ms-row-meta"> · referred to {r.referredTo}</span>
+                                  {r.guestName}
+                                  <span className="ms-row-meta"> · referral · {r.referredTo}</span>
                                 </span>
                                 <span className="ms-row-val" style={{ color: "#06D6A0" }}>{formatCurrency(r.commissionReceived)}</span>
                               </div>
@@ -929,7 +903,7 @@ export default function ListingDashboard({
                         {/* Discounts given */}
                         {month.discountsGiven > 0 && (
                           <div className="ms-discount-note">
-                            💡 {formatCurrency(month.discountsGiven)} discounted to guests this month
+                            {formatCurrency(month.discountsGiven)} discounted to guests this month
                             — without discounts you would have earned {formatCurrency(month.grossCharged)}.
                           </div>
                         )}
@@ -960,32 +934,54 @@ export default function ListingDashboard({
         })()}
 
         {activeTab === "bookings" && (() => {
-          const t = new Date();
-          const currentBookingsMonth = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}`;
-          const bookingsThisMonth = bookings.filter((b) => b.checkIn.startsWith(currentBookingsMonth));
+          const bookingsThisMonth = bookings.filter((b) => b.checkIn.startsWith(bookingsMonth));
+          const dataMonths = new Set<string>();
+          bookings.forEach((b) => { if (b.checkIn) dataMonths.add(b.checkIn.slice(0, 7)); });
           return (
-            <BookingTracker
-              bookings={bookingsThisMonth}
-              onAddBooking={addBooking}
-              onUpdateBooking={updateBooking}
-              onDeleteBooking={deleteBooking}
-              accentColor={listing.color}
-            />
+            <div className="tab-with-monthnav">
+              <MonthNav
+                month={bookingsMonth}
+                onChange={setBookingsMonth}
+                accentColor={listing.color}
+                dataMonths={dataMonths}
+              />
+              <BookingTracker
+                key={bookingsMonth}
+                bookings={bookingsThisMonth}
+                onAddBooking={addBooking}
+                onUpdateBooking={updateBooking}
+                onDeleteBooking={deleteBooking}
+                accentColor={listing.color}
+                defaultDate={seedDateForMonth(bookingsMonth)}
+                currency={currency}
+              />
+            </div>
           );
         })()}
 
         {activeTab === "referrals" && (() => {
-          const t = new Date();
-          const currentReferralsMonth = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}`;
-          const referralsThisMonth = referrals.filter((r) => r.date.startsWith(currentReferralsMonth));
+          const referralsThisMonth = referrals.filter((r) => r.date.startsWith(referralsMonth));
+          const dataMonths = new Set<string>();
+          referrals.forEach((r) => { if (r.date) dataMonths.add(r.date.slice(0, 7)); });
           return (
-            <ReferralTracker
-              referrals={referralsThisMonth}
-              onAddReferral={addReferral}
-              onUpdateReferral={updateReferral}
-              onDeleteReferral={deleteReferral}
-              accentColor="#06D6A0"
-            />
+            <div className="tab-with-monthnav">
+              <MonthNav
+                month={referralsMonth}
+                onChange={setReferralsMonth}
+                accentColor="#06D6A0"
+                dataMonths={dataMonths}
+              />
+              <ReferralTracker
+                key={referralsMonth}
+                referrals={referralsThisMonth}
+                onAddReferral={addReferral}
+                onUpdateReferral={updateReferral}
+                onDeleteReferral={deleteReferral}
+                accentColor="#06D6A0"
+                defaultDate={seedDateForMonth(referralsMonth)}
+                currency={currency}
+              />
+            </div>
           );
         })()}
 
@@ -994,6 +990,7 @@ export default function ListingDashboard({
             expenses={expenses}
             onAddExpense={addExpense}
             onDeleteExpense={deleteExpense}
+            currency={currency}
           />
         )}
 
@@ -1021,7 +1018,7 @@ export default function ListingDashboard({
                 onClick={handleSettingsSave}
                 disabled={!settingsForm.name.trim()}
               >
-                {settingsSaved ? "✓ Saved" : "Save Changes"}
+                {settingsSaved ? "Saved" : "Save Changes"}
               </button>
             </div>
 
@@ -1105,6 +1102,34 @@ export default function ListingDashboard({
               </div>
             </div>
 
+            {/* ── Display Preferences (account-wide) ── */}
+            <div className="stg-card">
+              <div className="stg-card-heading">
+                <h3 className="stg-card-title">Display</h3>
+                <p className="stg-card-desc">Account-wide preferences — applied to all your properties.</p>
+              </div>
+              <div className="stg-fields">
+                <div className="stg-field">
+                  <label className="stg-label" htmlFor="currency-select">Currency</label>
+                  <select
+                    id="currency-select"
+                    className="stg-input stg-select"
+                    value={currency ?? "KES"}
+                    onChange={(e) => handleCurrencyChange(e.target.value)}
+                  >
+                    {CURRENCIES.map((c) => (
+                      <option key={c.code} value={c.code}>
+                        {c.symbol} — {c.label} ({c.code})
+                      </option>
+                    ))}
+                  </select>
+                  <p className="stg-card-desc" style={{ marginTop: 2 }}>
+                    Example: {formatCurrency(1200)}
+                  </p>
+                </div>
+              </div>
+            </div>
+
             {/* ── Danger Zone ── */}
             {onDeleteListing && (
               <div className="stg-card danger-card">
@@ -1141,7 +1166,7 @@ export default function ListingDashboard({
                     className="stg-btn-delete"
                     onClick={() => setShowDeleteConfirm(true)}
                   >
-                    🗑 Delete This Property
+                    Delete This Property
                   </button>
                 )}
               </div>
@@ -1219,11 +1244,6 @@ export default function ListingDashboard({
           white-space: nowrap;
         }
         .listing-address { font-size: 12px; color: #5a6080; margin: 0; }
-        .listing-quick-stats { display: flex; gap: 20px; }
-        .quick-stat { text-align: center; }
-        .qs-value { display: block; font-size: 15px; font-weight: 700; color: #e8e3d9; }
-        .qs-label { display: block; font-size: 10px; color: #4a5068; text-transform: uppercase; letter-spacing: 0.8px; }
-
         /* ── TABS ── */
         .tabs-bar {
           display: flex;
@@ -1253,6 +1273,11 @@ export default function ListingDashboard({
         }
         .tab-item:hover { color: #8a9080; }
         .tab-item.active { color: #e8e3d9; font-weight: 500; }
+        .tab-item:focus-visible {
+          outline: 2px solid #81b29a;
+          outline-offset: -2px;
+          border-radius: 4px 4px 0 0;
+        }
 
         /* ── TAB CONTENT ── */
         .tab-content {
@@ -1262,6 +1287,12 @@ export default function ListingDashboard({
           max-width: 100%;
           box-sizing: border-box;
           overflow-x: hidden;
+        }
+        .tab-with-monthnav {
+          display: flex;
+          flex-direction: column;
+          gap: 20px;
+          min-width: 0;
         }
 
         /* ── OVERVIEW v2 ── */
@@ -1516,7 +1547,6 @@ export default function ListingDashboard({
 
         /* ── TABLET (≤ 900px) ── */
         @media (max-width: 900px) {
-          .listing-quick-stats { display: none; }
           .tab-content { padding: 16px; }
 
           /* Overview */
@@ -1535,11 +1565,8 @@ export default function ListingDashboard({
           .listing-type-badge { display: none; }
           .listing-address { font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-          /* Tabs — icons only on mobile */
-          .tab-item { padding: 10px 12px; font-size: 0; gap: 0; }
-          .tab-item span:first-child { font-size: 18px; }
-          .tab-item span:last-child { display: none; }
-          .tab-item.active span:last-child { display: none; }
+          /* Tabs — text labels, horizontal scroll */
+          .tab-item { padding: 10px 12px; font-size: 12px; }
 
           /* Tab content */
           .tab-content { padding: 12px; }

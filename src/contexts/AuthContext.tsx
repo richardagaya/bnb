@@ -21,7 +21,8 @@ import {
   type User as FirebaseUser,
 } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import { createUserProfile, getUserProfile, type UserProfile } from "@/lib/firestore";
+import { createUserProfile, getUserProfile, updateUserProfile, type UserProfile } from "@/lib/firestore";
+import { DEFAULT_CURRENCY } from "@/lib/currency";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -30,6 +31,7 @@ export type User = {
   email: string;
   name: string;
   photoURL?: string;
+  currency: string;
 };
 
 type SignInResult = { ok: true } | { ok: false; error: string };
@@ -42,6 +44,8 @@ type AuthContextValue = {
   signInWithGoogle: () => Promise<SignInResult>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<SignInResult>;
+  /** Persist a new account-wide display currency (ISO 4217 code). */
+  updateCurrency: (code: string) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -54,6 +58,7 @@ function mapFirebaseUser(fbUser: FirebaseUser, profile?: UserProfile | null): Us
     email: fbUser.email ?? "",
     name: profile?.name ?? fbUser.displayName ?? fbUser.email?.split("@")[0] ?? "Host",
     photoURL: profile?.photoURL ?? fbUser.photoURL ?? undefined,
+    currency: profile?.currency ?? DEFAULT_CURRENCY,
   };
 }
 
@@ -205,6 +210,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
   }, []);
 
+  const updateCurrency = useCallback(async (code: string) => {
+    // Optimistically update local state so formatting changes immediately.
+    setUser((prev) => (prev ? { ...prev, currency: code } : prev));
+    const uid = auth.currentUser?.uid;
+    if (uid) await updateUserProfile(uid, { currency: code });
+  }, []);
+
   const resetPassword = useCallback(async (email: string): Promise<SignInResult> => {
     try {
       const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? (typeof window !== "undefined" ? window.location.origin : "");
@@ -222,8 +234,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ user, isReady, signIn, signUp, signInWithGoogle, signOut, resetPassword }),
-    [user, isReady, signIn, signUp, signInWithGoogle, signOut, resetPassword]
+    () => ({ user, isReady, signIn, signUp, signInWithGoogle, signOut, resetPassword, updateCurrency }),
+    [user, isReady, signIn, signUp, signInWithGoogle, signOut, resetPassword, updateCurrency]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

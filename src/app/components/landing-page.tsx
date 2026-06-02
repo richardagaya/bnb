@@ -48,6 +48,15 @@ export default function LandingPage() {
   const [activeMonth, setActiveMonth]     = useState(0);
   const [mcEmail, setMcEmail]           = useState("");
   const [mcState, setMcState]           = useState<"idle" | "loading" | "done" | "error">("idle");
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+  const NAV_LINKS = [
+    { href: "#features", label: "Features" },
+    { href: "#how", label: "How it works" },
+    { href: "#demo", label: "Demo" },
+  ] as const;
+
+  const closeMobileNav = () => setMobileNavOpen(false);
 
   const handleMarketingEmail = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,6 +83,21 @@ export default function LandingPage() {
     return () => clearInterval(t);
   }, []);
 
+  // Mobile nav: Escape to close, lock body scroll while open
+  useEffect(() => {
+    if (!mobileNavOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMobileNavOpen(false);
+    };
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [mobileNavOpen]);
+
   // Sections for scroll reveal
   const s1 = useReveal(), s2 = useReveal(), s3 = useReveal(),
         s4 = useReveal(), s5 = useReveal(), s6 = useReveal();
@@ -86,16 +110,68 @@ export default function LandingPage() {
 
       {/* ── NAV ── */}
       <nav className={`lp-nav ${scrolled ? "lp-nav--stuck" : ""}`}>
-        <a href="/" className="lp-logo">
+        <a href="/" className="lp-logo" onClick={closeMobileNav}>
           <img src="/logo.png" alt="Tractar" className="lp-logo-img" />
         </a>
         <ul className="lp-nav-links">
-          <li><a href="#features">Features</a></li>
-          <li><a href="#how">How it works</a></li>
-          <li><a href="#demo">Demo</a></li>
+          {NAV_LINKS.map((link) => (
+            <li key={link.href}>
+              <a href={link.href}>{link.label}</a>
+            </li>
+          ))}
         </ul>
-        <a href="/login" className="lp-nav-cta">Get started free →</a>
+        <a href="/login" className="lp-nav-cta lp-nav-cta--desktop">Get started free →</a>
+        <button
+          type="button"
+          className={`lp-nav-menu-btn${mobileNavOpen ? " lp-nav-menu-btn--open" : ""}`}
+          aria-expanded={mobileNavOpen}
+          aria-controls="lp-mobile-nav"
+          aria-label={mobileNavOpen ? "Close menu" : "Open menu"}
+          onClick={() => setMobileNavOpen((v) => !v)}
+        >
+          <span className="lp-nav-menu-bar" />
+          <span className="lp-nav-menu-bar" />
+          <span className="lp-nav-menu-bar" />
+        </button>
       </nav>
+
+      {/* Mobile nav drawer */}
+      {mobileNavOpen && (
+        <>
+          <div className="lp-nav-backdrop" onClick={closeMobileNav} aria-hidden="true" />
+          <div
+            id="lp-mobile-nav"
+            className="lp-nav-drawer"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Site navigation"
+          >
+            <div className="lp-nav-drawer-head">
+              <span className="lp-nav-drawer-title">Menu</span>
+              <button
+                type="button"
+                className="lp-nav-drawer-close"
+                onClick={closeMobileNav}
+                aria-label="Close menu"
+              >
+                ✕
+              </button>
+            </div>
+            <ul className="lp-nav-drawer-links">
+              {NAV_LINKS.map((link) => (
+                <li key={link.href}>
+                  <a href={link.href} onClick={closeMobileNav}>
+                    {link.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+            <a href="/login" className="lp-nav-cta lp-nav-cta--drawer" onClick={closeMobileNav}>
+              Get started free →
+            </a>
+          </div>
+        </>
+      )}
 
       {/* ── HERO ── */}
       <section className="lp-hero">
@@ -1005,6 +1081,149 @@ const CSS = `
   }
   .lp-nav-cta:hover { opacity: 0.88; transform: translateY(-1px); }
 
+  /* Mobile menu button — hidden on desktop */
+  .lp-nav-menu-btn {
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    gap: 5px;
+    width: 44px;
+    height: 44px;
+    padding: 10px;
+    background: transparent;
+    border: 1px solid rgba(61,64,91,0.2);
+    border-radius: 10px;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .lp-nav-menu-btn:hover { background: rgba(61,64,91,0.06); border-color: rgba(61,64,91,0.35); }
+  .lp-nav-menu-btn:focus-visible {
+    outline: 2px solid var(--sage);
+    outline-offset: 2px;
+  }
+  .lp-nav-menu-bar {
+    display: block;
+    width: 20px;
+    height: 2px;
+    background: #333;
+    border-radius: 1px;
+    transition: transform 0.2s, opacity 0.2s;
+  }
+  .lp-nav-menu-btn--open .lp-nav-menu-bar:nth-child(1) {
+    transform: translateY(7px) rotate(45deg);
+  }
+  .lp-nav-menu-btn--open .lp-nav-menu-bar:nth-child(2) {
+    opacity: 0;
+  }
+  .lp-nav-menu-btn--open .lp-nav-menu-bar:nth-child(3) {
+    transform: translateY(-7px) rotate(-45deg);
+  }
+
+  .lp-nav-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 501;
+    background: rgba(11, 12, 16, 0.55);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    animation: lp-nav-fade-in 0.2s ease both;
+  }
+  .lp-nav-drawer {
+    position: fixed;
+    top: 0;
+    right: 0;
+    z-index: 502;
+    width: min(320px, 88vw);
+    height: 100%;
+    max-height: 100dvh;
+    background: rgba(247,244,236,0.99);
+    border-left: 1px solid rgba(61,64,91,0.15);
+    box-shadow: -8px 0 40px rgba(0,0,0,0.15);
+    display: flex;
+    flex-direction: column;
+    padding: 20px 24px 28px;
+    animation: lp-nav-slide-in 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  @keyframes lp-nav-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes lp-nav-slide-in {
+    from { transform: translateX(100%); }
+    to { transform: translateX(0); }
+  }
+  .lp-nav-drawer-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 28px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid rgba(61,64,91,0.12);
+  }
+  .lp-nav-drawer-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: #888;
+  }
+  .lp-nav-drawer-close {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(61,64,91,0.08);
+    border: 1px solid rgba(61,64,91,0.15);
+    border-radius: 8px;
+    color: #555;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+  .lp-nav-drawer-close:hover { background: rgba(61,64,91,0.14); color: #111; }
+  .lp-nav-drawer-close:focus-visible {
+    outline: 2px solid var(--sage);
+    outline-offset: 2px;
+  }
+  .lp-nav-drawer-links {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+    margin: 0;
+    padding: 0;
+  }
+  .lp-nav-drawer-links a {
+    display: block;
+    padding: 14px 12px;
+    font-size: 16px;
+    font-weight: 500;
+    color: #333;
+    text-decoration: none;
+    border-radius: 8px;
+    transition: background 0.15s, color 0.15s;
+  }
+  .lp-nav-drawer-links a:hover {
+    background: rgba(129,178,154,0.12);
+    color: #111;
+  }
+  .lp-nav-drawer-links a:focus-visible {
+    outline: 2px solid var(--sage);
+    outline-offset: 2px;
+  }
+  .lp-nav-cta--drawer {
+    display: none;
+    margin-top: 16px;
+    text-align: center;
+    justify-content: center;
+    width: 100%;
+    padding: 14px 20px;
+    font-size: 15px;
+  }
+
   /* ── HERO ── */
   .lp-hero {
     min-height: 100vh;
@@ -1694,6 +1913,9 @@ const CSS = `
     .lp-nav--stuck { padding: 0 24px; }
     .lp-logo-img { height: 64px; }
     .lp-nav-links { display: none; }
+    .lp-nav-cta--desktop { display: none; }
+    .lp-nav-menu-btn { display: flex; }
+    .lp-nav-cta--drawer { display: inline-flex; }
     .lp-hero { padding: 120px 24px 80px; }
     .lp-hero-inner { grid-template-columns: 1fr; gap: 48px; }
     .lp-hero-right { order: -1; }
@@ -1762,5 +1984,19 @@ const CSS = `
   @media (max-width: 600px) {
     .lp-feedback-fab span { display: none; }
     .lp-feedback-fab { padding: 12px 14px; bottom: 20px; right: 20px; font-size: 18px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .blob, .lp-scroll-hint, .lp-chip, .lp-ticker-track,
+    .lp-revealed > *, .lp-stat--in, .lp-video-label-dot {
+      animation: none !important;
+    }
+    .lp-nav-cta:hover, .lp-btn-primary:hover, .lp-feedback-fab:hover {
+      transform: none;
+    }
+    .lp-nav-drawer, .lp-nav-backdrop {
+      animation: none !important;
+    }
+    .lp-nav-menu-bar { transition: none; }
   }
 `;

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { formatCurrency as fmtMoney, currencySymbol } from "@/lib/currency";
 
 export interface FinancialData {
   furnitureCost: number;
@@ -20,13 +21,8 @@ export interface FinancialData {
 interface FinancialCalculatorProps {
   data: FinancialData;
   onChange: (data: FinancialData) => void;
-}
-
-function currency(n: number) {
-  return `KSh ${new Intl.NumberFormat("en-KE", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(n)}`;
+  /** Account currency code (ISO 4217). */
+  currency?: string;
 }
 
 const COST_FIELDS: { key: keyof FinancialData; label: string; hint?: string }[] = [
@@ -44,7 +40,9 @@ const EXPENSE_FIELDS: { key: keyof FinancialData; label: string }[] = [
   { key: "monthlyCleaner", label: "Cleaner" },
 ];
 
-export default function FinancialCalculator({ data, onChange }: FinancialCalculatorProps) {
+export default function FinancialCalculator({ data, onChange, currency: currencyCode }: FinancialCalculatorProps) {
+  const fmt = (n: number) => fmtMoney(n, currencyCode);
+  const symbol = currencySymbol(currencyCode);
   const [draft, setDraft] = useState<FinancialData>(data);
   const [saved, setSaved] = useState(false);
 
@@ -92,7 +90,7 @@ export default function FinancialCalculator({ data, onChange }: FinancialCalcula
           </p>
         </div>
         <button className={`save-btn ${saved ? "saved" : ""}`} onClick={handleSave}>
-          {saved ? "✓ Saved" : "Save Changes"}
+          {saved ? "Saved" : "Save Changes"}
         </button>
       </div>
 
@@ -114,7 +112,7 @@ export default function FinancialCalculator({ data, onChange }: FinancialCalcula
               <div className="field">
                 <label className="field-label">Price Per Stay</label>
                 <div className="input-wrap">
-                  <span className="prefix">KSh</span>
+                  <span className="prefix">{symbol}</span>
                   <input
                     type="number"
                     min="0"
@@ -167,22 +165,22 @@ export default function FinancialCalculator({ data, onChange }: FinancialCalcula
             <div className="pricing-preview">
               <div className="preview-row">
                 <span className="preview-label">Price per stay</span>
-                <span className="preview-val">{currency(draft.chargePerStay)}</span>
+                <span className="preview-val">{fmt(draft.chargePerStay)}</span>
               </div>
               {draft.discountPercent > 0 && (
                 <div className="preview-row preview-deduct">
                   <span className="preview-label">Platform fee ({draft.discountPercent}%)</span>
-                  <span className="preview-val preview-neg">− {currency(platformFeeAmt)}</span>
+                  <span className="preview-val preview-neg">− {fmt(platformFeeAmt)}</span>
                 </div>
               )}
               <div className="preview-divider" />
               <div className="preview-row preview-net">
                 <span className="preview-label">You receive / stay</span>
-                <span className="preview-val preview-pos">{currency(netPerStay)}</span>
+                <span className="preview-val preview-pos">{fmt(netPerStay)}</span>
               </div>
               <div className="preview-row">
                 <span className="preview-label">× {draft.projectedStaysPerMonth} stays/mo</span>
-                <span className="preview-val">{currency(projectedMonthlyRevenue)}</span>
+                <span className="preview-val">{fmt(projectedMonthlyRevenue)}</span>
               </div>
               <div className="preview-divider" />
               <div className="preview-row preview-profit">
@@ -191,7 +189,7 @@ export default function FinancialCalculator({ data, onChange }: FinancialCalcula
                   className="preview-val"
                   style={{ color: projectedMonthlyProfit >= 0 ? "#81b29a" : "#e07a5f" }}
                 >
-                  {currency(projectedMonthlyProfit)}
+                  {fmt(projectedMonthlyProfit)}
                 </span>
               </div>
               <p className="preview-note">
@@ -212,7 +210,7 @@ export default function FinancialCalculator({ data, onChange }: FinancialCalcula
               <div key={key} className="field">
                 <label className="field-label">{label}</label>
                 <div className="input-wrap">
-                  <span className="prefix">KSh</span>
+                  <span className="prefix">{symbol}</span>
                   <input
                     type="number"
                     min="0"
@@ -228,7 +226,7 @@ export default function FinancialCalculator({ data, onChange }: FinancialCalcula
           </div>
           <div className="section-total">
             <span>Total capital invested</span>
-            <span className="section-total-value">{currency(totalCapital)}</span>
+            <span className="section-total-value">{fmt(totalCapital)}</span>
           </div>
         </section>
 
@@ -243,7 +241,7 @@ export default function FinancialCalculator({ data, onChange }: FinancialCalcula
               <div key={key} className="field">
                 <label className="field-label">{label}</label>
                 <div className="input-wrap">
-                  <span className="prefix">KSh</span>
+                  <span className="prefix">{symbol}</span>
                   <input
                     type="number"
                     min="0"
@@ -258,7 +256,7 @@ export default function FinancialCalculator({ data, onChange }: FinancialCalcula
           </div>
           <div className="section-total">
             <span>Total monthly expenses</span>
-            <span className="section-total-value">{currency(totalMonthlyExpenses)}</span>
+            <span className="section-total-value">{fmt(totalMonthlyExpenses)}</span>
           </div>
         </section>
       </div>

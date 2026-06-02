@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
+import { useDismissOnEscape, useDismissOnClickOutside } from "@/lib/useDismiss";
 import { Booking } from "./BookingTracker";
 import type { ImportedBooking } from "../api/ical-sync/route";
 
@@ -26,13 +27,13 @@ interface CalendarSyncProps {
 }
 
 const PLATFORMS = [
-  { name: "Airbnb",       color: "#FF5A5F", icon: "🏠" },
-  { name: "Booking.com",  color: "#003580", icon: "🔵" },
-  { name: "VRBO",         color: "#1A5276", icon: "🏡" },
-  { name: "Expedia",      color: "#FFC72C", icon: "✈️" },
-  { name: "TripAdvisor",  color: "#34E0A1", icon: "🦉" },
-  { name: "Direct",       color: "#81B29A", icon: "📅" },
-  { name: "Other",        color: "#8B8B8B", icon: "🗓️" },
+  { name: "Airbnb",       color: "#FF5A5F", abbr: "AB" },
+  { name: "Booking.com",  color: "#003580", abbr: "BC" },
+  { name: "VRBO",         color: "#1A5276", abbr: "VR" },
+  { name: "Expedia",      color: "#FFC72C", abbr: "EX" },
+  { name: "TripAdvisor",  color: "#34E0A1", abbr: "TA" },
+  { name: "Direct",       color: "#81B29A", abbr: "DR" },
+  { name: "Other",        color: "#8B8B8B", abbr: "OT" },
 ];
 
 const SOURCE_COLORS: Record<string, string> = {
@@ -92,6 +93,11 @@ export default function CalendarSync({
   const [viewYear,   setViewYear]   = useState(today.getFullYear());
   const [viewMonth,  setViewMonth]  = useState(today.getMonth());
   const [showForm,   setShowForm]   = useState(false);
+  const formRef = useRef<HTMLDivElement>(null);
+  const closeForm = useCallback(() => setShowForm(false), []);
+  useDismissOnEscape(showForm, closeForm);
+  useDismissOnClickOutside(formRef, showForm, closeForm);
+
   const [form,       setForm]       = useState({ platform: "Airbnb", url: "" });
   const [syncingId,  setSyncingId]  = useState<string | null>(null);
   const [tooltip,    setTooltip]    = useState<{ key: string; text: string } | null>(null);
@@ -270,7 +276,7 @@ export default function CalendarSync({
           </div>
         ) : (
           <div className="cs-avail-bar">
-            <span className="cs-avail-pill">✓ Fully Available</span>
+            <span className="cs-avail-pill">Fully Available</span>
             <span>No bookings this month</span>
           </div>
         )}
@@ -316,7 +322,7 @@ export default function CalendarSync({
         </div>
 
         {showForm && (
-          <div className="cs-form">
+          <div className="cs-form" ref={formRef}>
             <p className="cs-form-heading">Platform</p>
             <div className="cs-platform-grid">
               {PLATFORMS.map((p) => (
@@ -326,7 +332,7 @@ export default function CalendarSync({
                   style={form.platform === p.name ? { borderColor: p.color, background: `${p.color}18`, color: p.color } : {}}
                   onClick={() => setForm({ ...form, platform: p.name })}
                 >
-                  <span>{p.icon}</span>
+                  <span className="cs-plat-abbr">{p.abbr}</span>
                   <span>{p.name}</span>
                 </button>
               ))}
@@ -353,7 +359,7 @@ export default function CalendarSync({
               return (
                 <div key={source.id} className={`cs-src-row ${source.status === "error" ? "cs-src-err" : ""}`}>
                   <div className="cs-src-badge" style={{ background: `${meta.color}18`, borderColor: `${meta.color}44` }}>
-                    <span>{meta.icon}</span>
+                    <span className="cs-plat-abbr">{meta.abbr}</span>
                     <span style={{ color: meta.color, fontSize: "12px", fontWeight: 600 }}>{source.platform}</span>
                   </div>
                   <div className="cs-src-info">
@@ -372,8 +378,8 @@ export default function CalendarSync({
                     {result && !result.error && (
                       <div className="cs-result-banner">
                         {result.added > 0
-                          ? `✓ ${result.added} new booking${result.added !== 1 ? "s" : ""} imported`
-                          : "✓ Up to date"}
+                          ? `${result.added} new booking${result.added !== 1 ? "s" : ""} imported`
+                          : "Up to date"}
                         {result.skipped > 0 && result.added > 0 && ` · ${result.skipped} already existed`}
                       </div>
                     )}
@@ -399,7 +405,6 @@ export default function CalendarSync({
 
         {sources.length === 0 && !showForm && (
           <div className="cs-ical-empty">
-            <span>📡</span>
             <p>No iCal feeds connected. Your bookings are already blocked automatically above.</p>
           </div>
         )}
@@ -619,6 +624,7 @@ export default function CalendarSync({
         }
         .cs-form-heading { font-size: 10px; font-weight: 700; color: #5a6080; text-transform: uppercase; letter-spacing: 0.8px; margin: 0 0 4px; }
         .cs-platform-grid { display: flex; flex-wrap: wrap; gap: 7px; }
+        .cs-plat-abbr { font-size: 10px; font-weight: 800; letter-spacing: 0.02em; }
         .cs-plat-btn {
           display: flex; align-items: center; gap: 6px;
           padding: 6px 12px; background: #1e2130;

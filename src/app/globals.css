@@ -24,3 +24,24 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Respect users who prefer reduced motion (landing animations, toasts, etc.). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Keyboard focus ring for controls without their own :focus-visible styles. */
+button:focus-visible,
+a:focus-visible,
+[role="tab"]:focus-visible,
+select:focus-visible {
+  outline: 2px solid #81b29a;
+  outline-offset: 2px;
+}
