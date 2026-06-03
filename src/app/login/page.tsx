@@ -28,6 +28,12 @@ function LoginForm() {
     if (user) router.replace(redirect);
   }, [user, isReady, router, redirect]);
 
+  useEffect(() => {
+    if (searchParams.get("reset") === "1") {
+      setMode("reset");
+    }
+  }, [searchParams]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);

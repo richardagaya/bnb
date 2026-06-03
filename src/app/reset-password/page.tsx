@@ -5,14 +5,14 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { confirmPasswordReset, verifyPasswordResetCode } from "firebase/auth";
 import { auth } from "@/lib/firebase";
+import { isPasswordResetAction, parseFirebaseActionLink } from "@/lib/firebaseActionLink";
 
 type Stage = "verifying" | "form" | "success" | "invalid";
 
 function ResetPasswordForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const oobCode = searchParams.get("oobCode") ?? "";
-  const mode    = searchParams.get("mode") ?? "";
+  const [hash, setHash] = useState("");
 
   const [stage, setStage]           = useState<Stage>("verifying");
   const [email, setEmail]           = useState("");
@@ -23,20 +23,38 @@ function ResetPasswordForm() {
   const [error, setError]           = useState<string | null>(null);
   const [pending, setPending]       = useState(false);
 
-  // Verify the reset code on mount
   useEffect(() => {
-    if (!oobCode || mode !== "resetPassword") {
+    setHash(window.location.hash);
+  }, []);
+
+  const action = parseFirebaseActionLink(searchParams, hash);
+  const oobCode = action?.oobCode ?? "";
+
+  // Verify the reset code once link params are available (query or hash)
+  useEffect(() => {
+    const parsed = parseFirebaseActionLink(searchParams, hash);
+    if (!isPasswordResetAction(parsed)) {
       setStage("invalid");
       return;
     }
 
-    verifyPasswordResetCode(auth, oobCode)
-      .then((email) => {
-        setEmail(email);
-        setStage("form");
+    const code = parsed.oobCode;
+    let cancelled = false;
+    verifyPasswordResetCode(auth, code)
+      .then((addr) => {
+        if (!cancelled) {
+          setEmail(addr);
+          setStage("form");
+        }
       })
-      .catch(() => setStage("invalid"));
-  }, [oobCode, mode]);
+      .catch(() => {
+        if (!cancelled) setStage("invalid");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [searchParams, hash]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -100,7 +118,10 @@ function ResetPasswordForm() {
               This password reset link has expired or already been used.<br />
               Request a new one from the sign in page.
             </p>
-            <Link href="/login" className="rp-btn-primary">
+            <Link href="/login?reset=1" className="rp-btn-primary">
+              Request a new reset link
+            </Link>
+            <Link href="/login" className="rp-link-secondary">
               Back to sign in
             </Link>
           </div>
@@ -422,6 +443,14 @@ function ResetPasswordForm() {
           transition: opacity 0.15s;
         }
         .rp-btn-primary:hover { opacity: 0.88; }
+
+        .rp-link-secondary {
+          display: inline-flex; align-items: center;
+          margin-top: 10px; font-size: 13px;
+          color: #4a5068; text-decoration: none;
+          transition: color 0.15s;
+        }
+        .rp-link-secondary:hover { color: #81b29a; }
 
         /* Back link */
         .rp-back {
