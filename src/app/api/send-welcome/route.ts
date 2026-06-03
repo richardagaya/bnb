@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
-import { getAppUrl, getResendApiKey, getResendFrom, getResendReplyTo } from "@/lib/emailConfig";
+import {
+  formatResendError,
+  getAppUrl,
+  getResendApiKey,
+  getResendFrom,
+  getResendFromDomain,
+  getResendReplyTo,
+} from "@/lib/emailConfig";
 
 const APP_URL = getAppUrl();
 
@@ -21,9 +28,10 @@ export async function POST(req: NextRequest) {
     const resend = new Resend(apiKey);
     const firstName = (name ?? email.split("@")[0]).split(" ")[0];
     const replyTo = getResendReplyTo();
+    const from = getResendFrom();
 
     const { error } = await resend.emails.send({
-      from: getResendFrom(),
+      from,
       to: email,
       ...(replyTo ? { replyTo } : {}),
       subject: `Welcome to Tractar, ${firstName} 👋`,
@@ -31,8 +39,11 @@ export async function POST(req: NextRequest) {
     });
 
     if (error) {
-      console.error("[send-welcome] Resend error:", error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error("[send-welcome] Resend error:", error.message, "| from domain:", getResendFromDomain());
+      return NextResponse.json(
+        { error: formatResendError(error.message, getResendFromDomain()) },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({ ok: true });

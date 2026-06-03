@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 import { getAdminAuth } from "@/lib/firebaseAdmin";
-import { getAppUrl, getResendApiKey, getResendFrom, getResendReplyTo } from "@/lib/emailConfig";
+import {
+  formatResendError,
+  getAppUrl,
+  getResendApiKey,
+  getResendFrom,
+  getResendFromDomain,
+  getResendReplyTo,
+} from "@/lib/emailConfig";
 import { buildGoogleSignInReminderEmail, buildPasswordResetEmail } from "@/lib/passwordResetEmail";
 
 export async function POST(req: NextRequest) {
@@ -34,7 +41,8 @@ export async function POST(req: NextRequest) {
     const continueUrl = `${appUrl}/reset-password`;
     const resend = new Resend(apiKey);
     const replyTo = getResendReplyTo();
-    const sendOpts = replyTo ? { replyTo } : {};
+    const from = getResendFrom();
+    const sendOpts = { from, ...(replyTo ? { replyTo } : {}) };
 
     let userRecord;
     try {
@@ -53,16 +61,23 @@ export async function POST(req: NextRequest) {
     // Google (or other OAuth) accounts have no password — send a helpful sign-in email instead
     if (!hasPasswordProvider) {
       const { error } = await resend.emails.send({
-        from: getResendFrom(),
-        to: trimmed,
         ...sendOpts,
+        to: trimmed,
         subject: "How to sign in to your Tractar account",
         html: buildGoogleSignInReminderEmail(appUrl),
       });
 
       if (error) {
-        console.error("[send-password-reset] Resend error (Google reminder):", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        console.error(
+          "[send-password-reset] Resend error (Google reminder):",
+          error.message,
+          "| from domain:",
+          getResendFromDomain()
+        );
+        return NextResponse.json(
+          { error: formatResendError(error.message, getResendFromDomain()) },
+          { status: 500 }
+        );
       }
 
       return NextResponse.json({ ok: true });
@@ -84,16 +99,18 @@ export async function POST(req: NextRequest) {
     }
 
     const { error } = await resend.emails.send({
-      from: getResendFrom(),
-      to: trimmed,
       ...sendOpts,
+      to: trimmed,
       subject: "Reset your Tractar password",
       html: buildPasswordResetEmail(resetLink, appUrl),
     });
 
     if (error) {
-      console.error("[send-password-reset] Resend error:", error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error("[send-password-reset] Resend error:", error.message, "| from domain:", getResendFromDomain());
+      return NextResponse.json(
+        { error: formatResendError(error.message, getResendFromDomain()) },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({ ok: true });
