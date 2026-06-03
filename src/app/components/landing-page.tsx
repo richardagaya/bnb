@@ -234,7 +234,7 @@ export default function LandingPage() {
               <div className="lp-mockup-bar">
                 <span className="lp-dot lp-dot-r"/><span className="lp-dot lp-dot-y"/>
                 <span className="lp-dot lp-dot-g"/>
-                <span className="lp-mockup-url">tractar.app/dashboard</span>
+                <span className="lp-mockup-url">tracktar.com/dashboard</span>
               </div>
               <div className="lp-mockup-body">
                 {/* Sidebar */}
@@ -429,7 +429,7 @@ export default function LandingPage() {
                       <div className="lp-vthumb-dots">
                         <span/><span/><span/>
                       </div>
-                      <span className="lp-vthumb-url">tractar.app/dashboard</span>
+                      <span className="lp-vthumb-url">tracktar.com/dashboard</span>
                     </div>
                     <div className="lp-vthumb-body">
                       <div className="lp-vthumb-sidebar">

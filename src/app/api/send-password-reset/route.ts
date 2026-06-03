@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 import { getAdminAuth } from "@/lib/firebaseAdmin";
 import { getAppUrl, getResendApiKey, getResendFrom, getResendReplyTo } from "@/lib/emailConfig";
-import { buildPasswordResetEmail } from "@/lib/passwordResetEmail";
+import { buildGoogleSignInReminderEmail, buildPasswordResetEmail } from "@/lib/passwordResetEmail";
 
 export async function POST(req: NextRequest) {
   try {
@@ -32,8 +32,10 @@ export async function POST(req: NextRequest) {
 
     const appUrl = getAppUrl();
     const continueUrl = `${appUrl}/reset-password`;
+    const resend = new Resend(apiKey);
+    const replyTo = getResendReplyTo();
+    const sendOpts = replyTo ? { replyTo } : {};
 
-    // Must exist and use email/password — otherwise Firebase throws opaque internal-error
     let userRecord;
     try {
       userRecord = await auth.getUserByEmail(trimmed);
@@ -47,14 +49,23 @@ export async function POST(req: NextRequest) {
     }
 
     const hasPasswordProvider = userRecord.providerData.some((p) => p.providerId === "password");
+
+    // Google (or other OAuth) accounts have no password — send a helpful sign-in email instead
     if (!hasPasswordProvider) {
-      return NextResponse.json(
-        {
-          error:
-            'This account uses Google sign-in. Use "Sign in with Google" on the login page instead.',
-        },
-        { status: 400 }
-      );
+      const { error } = await resend.emails.send({
+        from: getResendFrom(),
+        to: trimmed,
+        ...sendOpts,
+        subject: "How to sign in to your Tractar account",
+        html: buildGoogleSignInReminderEmail(appUrl),
+      });
+
+      if (error) {
+        console.error("[send-password-reset] Resend error (Google reminder):", error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
+
+      return NextResponse.json({ ok: true });
     }
 
     let resetLink: string;
@@ -72,13 +83,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Could not create reset link." }, { status: 500 });
     }
 
-    const resend = new Resend(apiKey);
-    const replyTo = getResendReplyTo();
-
     const { error } = await resend.emails.send({
       from: getResendFrom(),
       to: trimmed,
-      ...(replyTo ? { replyTo } : {}),
+      ...sendOpts,
       subject: "Reset your Tractar password",
       html: buildPasswordResetEmail(resetLink, appUrl),
     });
@@ -102,7 +110,6 @@ function isEmailNotFoundError(err: unknown): boolean {
   return msg.includes("EMAIL_NOT_FOUND");
 }
 
-/** Use tracktar.com in the email instead of firebaseapp.com when possible. */
 function toAppResetLink(firebaseLink: string, continueUrl: string): string {
   try {
     const parsed = new URL(firebaseLink);
@@ -117,7 +124,7 @@ function toAppResetLink(firebaseLink: string, continueUrl: string): string {
       return app.toString();
     }
   } catch {
-    /* use firebase link as fallback */
+    /* fallback */
   }
   return firebaseLink;
 }
