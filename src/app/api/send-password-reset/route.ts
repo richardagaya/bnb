@@ -19,23 +19,56 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Email service is not configured." }, { status: 500 });
     }
 
-    const appUrl = getAppUrl().replace(/\/$/, "");
+    let auth;
+    try {
+      auth = getAdminAuth();
+    } catch (err) {
+      console.error("[send-password-reset] Firebase Admin init failed:", err);
+      return NextResponse.json(
+        { error: "Password reset is not configured on the server. Please contact support." },
+        { status: 500 }
+      );
+    }
+
+    const appUrl = getAppUrl();
     const continueUrl = `${appUrl}/reset-password`;
+
+    // Must exist and use email/password — otherwise Firebase throws opaque internal-error
+    let userRecord;
+    try {
+      userRecord = await auth.getUserByEmail(trimmed);
+    } catch (err: unknown) {
+      const code = (err as { code?: string }).code ?? "";
+      if (code === "auth/user-not-found") {
+        return NextResponse.json({ ok: true });
+      }
+      console.error("[send-password-reset] getUserByEmail error:", err);
+      return NextResponse.json({ error: "Could not verify account." }, { status: 500 });
+    }
+
+    const hasPasswordProvider = userRecord.providerData.some((p) => p.providerId === "password");
+    if (!hasPasswordProvider) {
+      return NextResponse.json(
+        {
+          error:
+            'This account uses Google sign-in. Use "Sign in with Google" on the login page instead.',
+        },
+        { status: 400 }
+      );
+    }
 
     let resetLink: string;
     try {
-      const firebaseLink = await getAdminAuth().generatePasswordResetLink(trimmed, {
+      const firebaseLink = await auth.generatePasswordResetLink(trimmed, {
         url: continueUrl,
         handleCodeInApp: true,
       });
       resetLink = toAppResetLink(firebaseLink, continueUrl);
     } catch (err: unknown) {
-      const code = (err as { code?: string }).code ?? "";
-      // Don't reveal whether the account exists
-      if (code === "auth/user-not-found" || code === "auth/invalid-email") {
+      if (isEmailNotFoundError(err)) {
         return NextResponse.json({ ok: true });
       }
-      console.error("[send-password-reset] Firebase Admin error:", err);
+      console.error("[send-password-reset] generatePasswordResetLink error:", err);
       return NextResponse.json({ error: "Could not create reset link." }, { status: 500 });
     }
 
@@ -60,6 +93,13 @@ export async function POST(req: NextRequest) {
     console.error("[send-password-reset] Unexpected error:", err);
     return NextResponse.json({ error: "Failed to send reset email." }, { status: 500 });
   }
+}
+
+function isEmailNotFoundError(err: unknown): boolean {
+  const code = (err as { code?: string }).code ?? "";
+  if (code === "auth/user-not-found" || code === "auth/email-not-found") return true;
+  const msg = String((err as { message?: string }).message ?? "");
+  return msg.includes("EMAIL_NOT_FOUND");
 }
 
 /** Use tracktar.com in the email instead of firebaseapp.com when possible. */

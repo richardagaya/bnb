@@ -38,7 +38,8 @@ function resolveServiceAccount(): ServiceAccountFields {
     if (jsonOrKey.includes("BEGIN PRIVATE KEY")) {
       const projectId =
         process.env.FIREBASE_ADMIN_PROJECT_ID ?? process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-      const clientEmail = process.env.FIREBASE_ADMIN_CLIENT_EMAIL;
+      const clientEmail =
+        process.env.FIREBASE_ADMIN_CLIENT_EMAIL ?? process.env.FIREBASE_SERVICE_ACCOUNT_EMAIL;
       const privateKey = normalizePrivateKey(jsonOrKey);
 
       if (projectId && clientEmail) {
@@ -49,7 +50,8 @@ function resolveServiceAccount(): ServiceAccountFields {
 
   const projectId =
     process.env.FIREBASE_ADMIN_PROJECT_ID ?? process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-  const clientEmail = process.env.FIREBASE_ADMIN_CLIENT_EMAIL;
+  const clientEmail =
+    process.env.FIREBASE_ADMIN_CLIENT_EMAIL ?? process.env.FIREBASE_SERVICE_ACCOUNT_EMAIL;
   const privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY
     ? normalizePrivateKey(process.env.FIREBASE_ADMIN_PRIVATE_KEY)
     : undefined;

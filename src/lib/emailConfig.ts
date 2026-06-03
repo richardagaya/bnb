@@ -1,5 +1,5 @@
 export function getAppUrl() {
-  return process.env.NEXT_PUBLIC_APP_URL ?? "https://www.tracktar.com";
+  return (process.env.NEXT_PUBLIC_APP_URL ?? "https://www.tracktar.com").replace(/\/$/, "");
 }
 
 export function getResendFrom() {
