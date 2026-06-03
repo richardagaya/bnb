@@ -154,6 +154,10 @@ function LoginForm() {
       {/* ── Right panel ── */}
       <div className="auth-right">
         <div className="auth-form-wrap">
+          <Link href="/" className="auth-home-link">
+            ← Back to home
+          </Link>
+
           {/* Mobile-only brand */}
           <Link href="/" className="auth-brand auth-brand-mobile">
             <img src="/logo.png" alt="Tractar" className="auth-brand-logo" />
@@ -488,6 +492,19 @@ const styles = `
     gap: 0;
   }
 
+  .auth-home-link {
+    display: inline-flex;
+    align-items: center;
+    align-self: flex-start;
+    margin-bottom: 20px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #4a5068;
+    text-decoration: none;
+    transition: color 0.15s;
+  }
+  .auth-home-link:hover { color: #81b29a; }
+
   /* ── Brand ── */
   .auth-brand {
     display: inline-flex;
@@ -732,9 +749,11 @@ const styles = `
   .auth-terms-link:hover { color: #81b29a; }
   .auth-tab:focus-visible,
   .auth-forgot:focus-visible,
-  .auth-back-btn:focus-visible {
+  .auth-back-btn:focus-visible,
+  .auth-home-link:focus-visible {
     outline: 2px solid #81b29a;
     outline-offset: 2px;
+    border-radius: 4px;
   }
 
   /* ── Desktop: show left panel ── */

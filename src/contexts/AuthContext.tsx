@@ -17,7 +17,6 @@ import {
   getAdditionalUserInfo,
   updateProfile,
   signOut as firebaseSignOut,
-  sendPasswordResetEmail,
   type User as FirebaseUser,
 } from "firebase/auth";
 import { auth } from "@/lib/firebase";
@@ -219,17 +218,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const resetPassword = useCallback(async (email: string): Promise<SignInResult> => {
     try {
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? (typeof window !== "undefined" ? window.location.origin : "");
-      await sendPasswordResetEmail(auth, email.trim(), {
-        // After resetting, Firebase redirects here — also configure this URL
-        // in Firebase Console → Authentication → Templates → Password reset → Action URL
-        url: `${appUrl}/reset-password`,
-        handleCodeInApp: true,
+      const response = await fetch("/api/send-password-reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim() }),
       });
+
+      if (!response.ok) {
+        const data = (await response.json().catch(() => ({}))) as { error?: string };
+        return { ok: false, error: data.error ?? "Failed to send reset email." };
+      }
+
       return { ok: true };
-    } catch (err: unknown) {
-      const code = (err as { code?: string }).code ?? "";
-      return { ok: false, error: friendlyError(code) };
+    } catch {
+      return { ok: false, error: "Failed to send reset email. Please try again." };
     }
   }, []);
 
