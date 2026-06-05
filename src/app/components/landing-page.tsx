@@ -750,7 +750,7 @@ export default function LandingPage() {
           <nav className="lp-footer-links">
             <a href="/privacy-policy">Privacy</a>
             <a href="/terms-of-service">Terms</a>
-            <a href="#">Contact</a>
+            <a href="/contact">Contact</a>
           </nav>
           <p className="lp-footer-copy">© 2026 Tractar. All rights reserved.</p>
         </div>

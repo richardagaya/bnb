@@ -78,7 +78,11 @@ export default function PrivacyPolicyPage() {
               <h2 className="mb-2 text-xl font-semibold text-[#f7f4ec]">Contact</h2>
               <p>
                 If you have questions about this Privacy Policy, contact Tractar support through
-                the contact details provided on the site.
+                our{" "}
+                <Link href="/contact" className="text-[#81B29A] hover:underline">
+                  contact page
+                </Link>
+                .
               </p>
             </section>
           </div>

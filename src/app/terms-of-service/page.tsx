@@ -82,8 +82,11 @@ export default function TermsOfServicePage() {
             <section>
               <h2 className="mb-2 text-xl font-semibold text-[#f7f4ec]">Contact</h2>
               <p>
-                If you have questions about these Terms, contact Tractar support through the
-                contact details provided on the site.
+                If you have questions about these Terms, contact Tractar support through our{" "}
+                <Link href="/contact" className="text-[#81B29A] hover:underline">
+                  contact page
+                </Link>
+                .
               </p>
             </section>
           </div>
