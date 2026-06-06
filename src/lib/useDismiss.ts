@@ -24,7 +24,14 @@ export function useDismissOnClickOutside(
     if (!open) return;
     const onPointer = (e: MouseEvent) => {
       const el = ref.current;
-      if (el && !el.contains(e.target as Node)) onClose();
+      const target = e.target as Node;
+      // Portaled UI (e.g. DatePicker) lives outside `ref` — don't treat it as an outside click.
+      let node: Node | null = target;
+      while (node) {
+        if (node instanceof Element && node.hasAttribute("data-outside-click-ignore")) return;
+        node = node.parentNode;
+      }
+      if (el && !el.contains(target)) onClose();
     };
     document.addEventListener("mousedown", onPointer);
     return () => document.removeEventListener("mousedown", onPointer);

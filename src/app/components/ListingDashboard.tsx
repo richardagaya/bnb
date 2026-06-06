@@ -195,7 +195,11 @@ export default function ListingDashboard({
         }
 
         if (fsBkn.length > 0) {
-          setBookings(fsBkn as Booking[]);
+          setBookings((prev) => {
+            const loadedIds = new Set(fsBkn.map((b) => b.id));
+            const pending = prev.filter((b) => !loadedIds.has(b.id));
+            return pending.length > 0 ? [...(fsBkn as Booking[]), ...pending] : (fsBkn as Booking[]);
+          });
         } else {
           const localBkn = fromStorage<Booking[]>(`bnb_bkn_${listing.id}`, []);
           if (localBkn.length > 0) {
@@ -397,10 +401,14 @@ export default function ListingDashboard({
 
   const addBooking = async (booking: Omit<Booking, "id" | "createdAt">) => {
     const createdAt = new Date().toISOString();
+    const tempId = Date.now().toString();
+    setBookings((prev) => [...prev, { ...booking, id: tempId, createdAt }]);
     const id = await persist(fsAddBooking(uid, listing.id, { ...booking, createdAt }), {
       error: "Couldn't save the booking to the cloud — it's stored on this device.",
     });
-    setBookings((prev) => [...prev, { ...booking, id: id ?? Date.now().toString(), createdAt }]);
+    if (id && id !== tempId) {
+      setBookings((prev) => prev.map((b) => (b.id === tempId ? { ...b, id } : b)));
+    }
     if (id) toast.success("Booking added.");
   };
 

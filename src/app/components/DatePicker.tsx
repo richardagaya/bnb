@@ -137,6 +137,7 @@ export default function DatePicker({
         <PopupPortal>
           <div
             id="dp-popup-portal"
+            data-outside-click-ignore
             style={{ top: pos.top, left: pos.left, minWidth: pos.width }}
             className="dp-popup"
           >
