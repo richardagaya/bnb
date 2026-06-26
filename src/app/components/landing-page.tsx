@@ -183,14 +183,9 @@ export default function LandingPage() {
 
         <div className="lp-hero-inner">
           <div className="lp-hero-left">
-            <div className="lp-eyebrow">
-              <span className="lp-eyebrow-dot" />
-              Short-term rental intelligence
-            </div>
-
             <h1 className="lp-headline">
-              Your rental is a<br />
-              <em>business.</em><br />
+              Your rental is a <em>business.</em>
+              <br />
               Run it like one.
             </h1>
 
@@ -217,7 +212,6 @@ export default function LandingPage() {
               </a>
             </div>
 
-            {/* Trust badges */}
             <div className="lp-trust">
               <div className="lp-avatars">
                 {["#c07a6a","#6a9c80","#c4a45a","#6a7ab8","#9a6a9c"].map((c,i) => (
@@ -225,87 +219,6 @@ export default function LandingPage() {
                 ))}
               </div>
               <span className="lp-trust-text">Built for independent hosts</span>
-            </div>
-          </div>
-
-          {/* Dashboard preview */}
-          <div className="lp-hero-right">
-            <div className="lp-mockup">
-              <div className="lp-mockup-bar">
-                <span className="lp-dot lp-dot-r"/><span className="lp-dot lp-dot-y"/>
-                <span className="lp-dot lp-dot-g"/>
-                <span className="lp-mockup-url">tracktar.com/dashboard</span>
-              </div>
-              <div className="lp-mockup-body">
-                {/* Sidebar */}
-                <div className="lp-mock-sidebar">
-                  <p className="lp-mock-brand">⌂ Tractar</p>
-                  <button className="lp-mock-prop lp-mock-prop-active">Downtown Loft</button>
-                  <button className="lp-mock-prop">Beach Villa</button>
-                  <button className="lp-mock-prop">Studio 4B</button>
-                </div>
-                {/* Main area */}
-                <div className="lp-mock-main">
-                  {/* KPI row */}
-                  <div className="lp-mock-kpis">
-                    {[
-                      { label: "Apr profit", val: "KSh 3,840", color: "#81b29a" },
-                      { label: "Bookings", val: "6", color: "#f2cc8f" },
-                      { label: "Expenses", val: "KSh 2,100", color: "#e07a5f" },
-                    ].map(k => (
-                      <div className="lp-mock-kpi" key={k.label}>
-                        <span className="lp-mock-kpi-label">{k.label}</span>
-                        <span className="lp-mock-kpi-val" style={{ color: k.color }}>{k.val}</span>
-                      </div>
-                    ))}
-                  </div>
-                  {/* Calendar strip */}
-                  <div className="lp-mock-cal">
-                    <p className="lp-mock-sec">April 2025</p>
-                    <div className="lp-mock-days">
-                      {Array.from({ length: 14 }, (_, i) => i + 1).map(d => {
-                        const booked = [3,4,5,6,10,11,12,13,14].includes(d);
-                        return (
-                          <div key={d} className={`lp-mock-day ${booked ? "lp-mock-day-booked" : ""}`}>
-                            {d}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                  {/* P&L mini */}
-                  <div className="lp-mock-pnl">
-                    {[
-                      { label: "Rent", val: "-1,800" },
-                      { label: "Utilities", val: "-300" },
-                      { label: "Cleaner", val: "-500" },
-                    ].map(r => (
-                      <div className="lp-mock-pnl-row" key={r.label}>
-                        <span>{r.label}</span>
-                        <span className="lp-mock-pnl-neg">{r.val}</span>
-                      </div>
-                    ))}
-                    <div className="lp-mock-pnl-row lp-mock-pnl-profit">
-                      <span>Net Profit</span>
-                      <span className="lp-mock-pnl-green">+3,840</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Floating chips */}
-            <div className="lp-chip lp-chip-1">
-              <span className="lp-chip-icon">✓</span>
-              Calendar auto-blocked
-            </div>
-            <div className="lp-chip lp-chip-2">
-              <span className="lp-chip-icon lp-chip-icon-amber">📋</span>
-              4 bookings · KSh 8,000
-            </div>
-            <div className="lp-chip lp-chip-3">
-              <span className="lp-chip-icon lp-chip-icon-red">⟳</span>
-              iCal synced
             </div>
           </div>
         </div>
@@ -752,6 +665,30 @@ export default function LandingPage() {
             <a href="/terms-of-service">Terms</a>
             <a href="/contact">Contact</a>
           </nav>
+          <div className="lp-footer-social">
+            <a
+              href="https://www.instagram.com/tracktar.app"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Instagram"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <rect x="2" y="2" width="20" height="20" rx="5" stroke="currentColor" strokeWidth="1.8" />
+                <circle cx="12" cy="12" r="4.2" stroke="currentColor" strokeWidth="1.8" />
+                <circle cx="17.4" cy="6.6" r="1.2" fill="currentColor" />
+              </svg>
+            </a>
+            <a
+              href="https://www.tiktok.com/@tracktar"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="TikTok"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M16.6 5.82a4.278 4.278 0 0 1-.675-1.126 4.14 4.14 0 0 1-.41-1.017 3.616 3.616 0 0 1-.043-.63V2.5h-3.45v13.845a2.327 2.327 0 0 1-2.305 2.333 2.327 2.327 0 0 1-2.305-2.333 2.327 2.327 0 0 1 2.305-2.333c.24 0 .472.038.691.108v-3.36a5.689 5.689 0 0 0-.691-.042 5.803 5.803 0 0 0-5.996 5.996 5.803 5.803 0 0 0 5.996 5.996 5.803 5.803 0 0 0 5.996-5.996V9.01a8.238 8.238 0 0 0 4.773 1.526V7.086a4.278 4.278 0 0 1-1.126-.266z" />
+              </svg>
+            </a>
+          </div>
           <p className="lp-footer-copy">© 2026 Tractar. All rights reserved.</p>
         </div>
       </footer>
@@ -1232,9 +1169,9 @@ const CSS = `
     position: relative; overflow: hidden;
   }
   .lp-hero-inner {
-    max-width: 1200px; margin: 0 auto;
-    display: grid; grid-template-columns: 1fr 1fr;
-    gap: 64px; align-items: center;
+    max-width: 1100px; margin: 0 auto; width: 100%;
+    display: flex; flex-direction: column;
+    align-items: center; text-align: center;
   }
 
   /* Ambient blobs */
@@ -1260,7 +1197,7 @@ const CSS = `
   }
 
   /* Hero left */
-  .lp-hero-left { position: relative; z-index: 1; }
+  .lp-hero-left { position: relative; z-index: 1; width: 100%; }
   .lp-eyebrow {
     display: inline-flex; align-items: center; gap: 8px;
     font-size: 11px; font-weight: 600; letter-spacing: 1.5px;
@@ -1276,9 +1213,11 @@ const CSS = `
   }
   .lp-headline {
     font-family: var(--serif);
-    font-size: clamp(46px, 5.5vw, 70px);
-    line-height: 1.03; color: var(--text);
-    margin-bottom: 22px; letter-spacing: -0.5px;
+    font-size: clamp(58px, 8.5vw, 96px);
+    line-height: 1.05; color: var(--text);
+    margin-bottom: 28px;
+    letter-spacing: 0.02em;
+    max-width: 100%;
   }
   .lp-headline em {
     color: var(--sage); font-style: normal;
@@ -1286,13 +1225,15 @@ const CSS = `
     text-underline-offset: 4px;
   }
   .lp-hero-sub {
-    font-size: 15px; color: var(--muted); line-height: 1.75;
-    max-width: 440px; margin-bottom: 36px;
+    font-size: clamp(17px, 2vw, 20px); color: var(--muted); line-height: 1.7;
+    max-width: 680px; margin: 0 auto 40px;
+    letter-spacing: 0.01em;
   }
   .lp-hero-actions {
-    display: flex; align-items: center; gap: 12px; margin-bottom: 36px;
+    display: flex; align-items: center; justify-content: center;
+    gap: 12px; margin-bottom: 36px;
   }
-  .lp-trust { display: flex; align-items: center; gap: 12px; font-size: 12px; color: var(--muted); }
+  .lp-trust { display: flex; align-items: center; justify-content: center; gap: 12px; font-size: 12px; color: var(--muted); }
   .lp-avatars { display: flex; }
   .lp-avatar {
     width: 28px; height: 28px; border-radius: 50%;
@@ -1315,83 +1256,6 @@ const CSS = `
   .lp-btn-ghost { background: rgba(255,255,255,0.05); color: var(--muted); border-color: var(--bd2); }
   .lp-btn-ghost:hover { color: var(--text); border-color: var(--bd2); background: rgba(255,255,255,0.09); }
   .lp-btn-xl { font-size: 16px; padding: 16px 36px; border-radius: 12px; }
-
-  /* ── Mockup ── */
-  .lp-hero-right { position: relative; z-index: 1; }
-  .lp-mockup {
-    background: var(--bg2); border: 1px solid var(--bd2);
-    border-radius: 14px; overflow: hidden;
-    box-shadow: 0 40px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04);
-  }
-  .lp-mockup-bar {
-    background: #08090c; padding: 10px 16px;
-    display: flex; align-items: center; gap: 10px;
-    border-bottom: 1px solid var(--bd);
-  }
-  .lp-dot { width: 9px; height: 9px; border-radius: 50%; }
-  .lp-dot-r { background: #FF5F57; }
-  .lp-dot-y { background: #FEBC2E; }
-  .lp-dot-g { background: #28C840; }
-  .lp-mockup-url { font-family: var(--mono); font-size: 10px; color: var(--faint); margin-left: 4px; }
-  .lp-mockup-body { display: flex; min-height: 260px; }
-  .lp-mock-sidebar {
-    width: 110px; background: #080a0e;
-    border-right: 1px solid var(--bd); padding: 14px 10px; flex-shrink: 0;
-  }
-  .lp-mock-brand {
-    font-size: 9px; font-weight: 700; color: var(--text); opacity: 0.6;
-    padding: 0 6px 10px; margin-bottom: 6px; border-bottom: 1px solid var(--bd);
-  }
-  .lp-mock-prop {
-    display: block; width: 100%; padding: 6px 8px; background: none; border: none;
-    border-radius: 5px; font-family: var(--sans); font-size: 9px; color: var(--muted);
-    text-align: left; cursor: default; margin-bottom: 2px;
-  }
-  .lp-mock-prop-active { background: rgba(129,178,154,0.12); color: var(--sage); }
-  .lp-mock-main { flex: 1; padding: 14px; }
-  .lp-mock-kpis { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 10px; }
-  .lp-mock-kpi {
-    background: var(--bg3); border: 1px solid var(--bd); border-radius: 7px; padding: 8px;
-    display: flex; flex-direction: column; gap: 4px;
-  }
-  .lp-mock-kpi-label { font-size: 7px; color: var(--faint); }
-  .lp-mock-kpi-val { font-size: 11px; font-weight: 700; font-family: var(--mono); }
-  .lp-mock-cal {
-    background: var(--bg3); border: 1px solid var(--bd); border-radius: 7px; padding: 10px; margin-bottom: 8px;
-  }
-  .lp-mock-sec { font-size: 7px; color: var(--faint); margin-bottom: 6px; }
-  .lp-mock-days { display: flex; gap: 3px; flex-wrap: wrap; }
-  .lp-mock-day {
-    width: 16px; height: 16px; display: flex; align-items: center; justify-content: center;
-    font-size: 7px; color: var(--muted); border-radius: 50%;
-  }
-  .lp-mock-day-booked { background: rgba(129,178,154,0.3); color: var(--sage); }
-  .lp-mock-pnl { background: var(--bg3); border: 1px solid var(--bd); border-radius: 7px; padding: 10px; }
-  .lp-mock-pnl-row {
-    display: flex; justify-content: space-between; font-size: 8px; color: var(--muted); margin-bottom: 4px;
-  }
-  .lp-mock-pnl-neg { color: var(--coral); font-family: var(--mono); }
-  .lp-mock-pnl-green { color: var(--sage); font-family: var(--mono); }
-  .lp-mock-pnl-profit { font-weight: 700; color: var(--text); border-top: 1px solid var(--bd); padding-top: 4px; margin-top: 4px; margin-bottom: 0; }
-
-  /* Floating chips */
-  .lp-chip {
-    position: absolute; background: var(--bg2); border: 1px solid var(--bd2);
-    border-radius: 10px; padding: 8px 14px; font-size: 12px; font-weight: 500; color: var(--text);
-    display: flex; align-items: center; gap: 7px; white-space: nowrap;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
-    animation: chip-float 4s ease-in-out infinite;
-  }
-  .lp-chip-icon { font-size: 13px; color: var(--sage); }
-  .lp-chip-icon-amber { color: var(--amber); }
-  .lp-chip-icon-red { color: var(--coral); }
-  .lp-chip-1 { bottom: -16px; left: -30px; animation-delay: 0s; }
-  .lp-chip-2 { top: -14px; right: -20px; animation-delay: 1.5s; animation-duration: 3.5s; }
-  .lp-chip-3 { bottom: 40px; right: -30px; animation-delay: 0.8s; animation-duration: 5s; }
-  @keyframes chip-float {
-    0%, 100% { transform: translateY(0) rotate(-1deg); }
-    50% { transform: translateY(-8px) rotate(1deg); }
-  }
 
   /* Scroll hint */
   .lp-scroll-hint {
@@ -1905,6 +1769,12 @@ const CSS = `
   .lp-footer-links { display: flex; gap: 24px; }
   .lp-footer-links a { font-size: 12px; color: #888; text-decoration: none; transition: color 0.15s; }
   .lp-footer-links a:hover { color: #333; }
+  .lp-footer-social { display: flex; align-items: center; gap: 14px; }
+  .lp-footer-social a {
+    display: flex; align-items: center; justify-content: center;
+    color: #888; text-decoration: none; transition: color 0.15s;
+  }
+  .lp-footer-social a:hover { color: #333; }
   .lp-footer-copy { font-size: 12px; color: #aaa; }
 
   /* ── RESPONSIVE ── */
@@ -1917,9 +1787,7 @@ const CSS = `
     .lp-nav-menu-btn { display: flex; }
     .lp-nav-cta--drawer { display: inline-flex; }
     .lp-hero { padding: 120px 24px 80px; }
-    .lp-hero-inner { grid-template-columns: 1fr; gap: 48px; }
-    .lp-hero-right { order: -1; }
-    .lp-chip-1, .lp-chip-3 { display: none; }
+    .lp-hero-inner { gap: 0; }
     .lp-stats-row { grid-template-columns: repeat(2,1fr); padding: 40px 24px; gap: 0; }
     .lp-stat { padding: 20px 24px; border-right: none; border-bottom: 1px solid var(--bd); }
     .lp-stat:nth-child(odd) { border-right: 1px solid var(--bd); }
@@ -1948,7 +1816,7 @@ const CSS = `
   }
 
   @media (max-width: 600px) {
-    .lp-hero-actions { flex-direction: column; align-items: flex-start; }
+    .lp-hero-actions { flex-direction: column; align-items: center; }
     .lp-month-head { flex-direction: column; align-items: flex-start; gap: 8px; }
     .lp-month-head-right { width: 100%; justify-content: space-between; }
     .lp-feat-panel-left { order: 2; }
@@ -1987,7 +1855,7 @@ const CSS = `
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .blob, .lp-scroll-hint, .lp-chip, .lp-ticker-track,
+    .blob, .lp-scroll-hint, .lp-ticker-track,
     .lp-revealed > *, .lp-stat--in, .lp-video-label-dot {
       animation: none !important;
     }

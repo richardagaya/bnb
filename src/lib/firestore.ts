@@ -217,11 +217,15 @@ export async function deleteBooking(uid: string, listingId: string, bookingId: s
 // ─── Marketing Emails ─────────────────────────────────────────────────────────
 
 export async function saveMarketingEmail(email: string, source: string = "landing") {
-  await addDoc(collection(db, "marketingEmails"), {
-    email: email.trim().toLowerCase(),
-    source,
-    createdAt: serverTimestamp(),
+  const res = await fetch("/api/marketing-email", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, source }),
   });
+
+  if (!res.ok) {
+    throw new Error("Failed to save marketing email");
+  }
 }
 
 // ─── Referrals ────────────────────────────────────────────────────────────────
