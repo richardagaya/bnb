@@ -54,6 +54,8 @@ export default function LandingPage() {
     { href: "#features", label: "Features" },
     { href: "#how", label: "How it works" },
     { href: "#demo", label: "Demo" },
+    { href: "/tools", label: "Host hub" },
+    { href: "/blog", label: "Our blog" },
   ] as const;
 
   const closeMobileNav = () => setMobileNavOpen(false);
