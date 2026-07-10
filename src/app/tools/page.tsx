@@ -1,9 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 
 /* ── Types ─────────────────────────────────────────────────────────────── */
-type Tool = "roi" | "checklist" | "notes" | "expense" | "occupancy";
+type Tool = "roi" | "checklist" | "notes";
 
 /* ── Currency config ────────────────────────────────────────────────────── */
 const USD_TO_KES = 130;
@@ -421,195 +422,11 @@ function NotesTodo() {
   );
 }
 
-/* ── Expense Estimator ──────────────────────────────────────────────────── */
-const EXPENSE_CATS = ["Cleaning", "Utilities", "Maintenance", "Supplies", "Insurance", "Tax", "Management", "Other"];
-
-type ExpenseItem = { id: number; cat: string; label: string; amount: number; recurring: boolean };
-
-function ExpenseEstimator() {
-  const [items, setItems] = useState<ExpenseItem[]>([
-    { id: 1, cat: "Cleaning", label: "Cleaner fee per stay", amount: 60, recurring: true },
-    { id: 2, cat: "Utilities", label: "Electricity", amount: 80, recurring: true },
-    { id: 3, cat: "Utilities", label: "Water", amount: 30, recurring: true },
-    { id: 4, cat: "Management", label: "Airbnb host fee", amount: 50, recurring: true },
-    { id: 5, cat: "Supplies", label: "Toiletries restock", amount: 25, recurring: false },
-  ]);
-  const [label, setLabel]           = useState("");
-  const [amount, setAmount]         = useState(0);
-  const [cat, setCat]               = useState("Cleaning");
-  const [recurring, setRecurring]   = useState(true);
-
-  const add = () => {
-    if (!label.trim() || amount <= 0) return;
-    setItems([...items, { id: Date.now(), cat, label: label.trim(), amount, recurring }]);
-    setLabel(""); setAmount(0);
-  };
-  const remove = (id: number) => setItems(items.filter(i => i.id !== id));
-
-  const total = items.reduce((s, i) => s + i.amount, 0);
-  const byCategory = EXPENSE_CATS.map(c => ({
-    cat: c,
-    items: items.filter(i => i.cat === c),
-    total: items.filter(i => i.cat === c).reduce((s, i) => s + i.amount, 0),
-  })).filter(c => c.items.length > 0);
-
-  return (
-    <div className="tool-body">
-      <div className="expense-summary">
-        <div className="metric-card">
-          <p className="metric-label">Total monthly expenses</p>
-          <p className="metric-value" style={{ color: "var(--coral)" }}>${total.toLocaleString()}</p>
-        </div>
-        <div className="metric-card">
-          <p className="metric-label">Annual estimate</p>
-          <p className="metric-value" style={{ color: "var(--coral)" }}>${(total * 12).toLocaleString()}</p>
-        </div>
-        <div className="metric-card">
-          <p className="metric-label">Expense entries</p>
-          <p className="metric-value">{items.length}</p>
-        </div>
-      </div>
-
-      {byCategory.map(group => (
-        <div key={group.cat} className="expense-group">
-          <div className="expense-group-header">
-            <p className="tool-section-label" style={{ margin: 0 }}>{group.cat}</p>
-            <span className="expense-group-total">${group.total.toLocaleString()}/mo</span>
-          </div>
-          {group.items.map(item => (
-            <div key={item.id} className="expense-row">
-              <span className="expense-label">{item.label}</span>
-              <span className="expense-recurring">{item.recurring ? "monthly" : "one-time"}</span>
-              <span className="expense-amount">${item.amount.toLocaleString()}</span>
-              <button className="checklist-remove" onClick={() => remove(item.id)}>✕</button>
-            </div>
-          ))}
-        </div>
-      ))}
-
-      <div className="expense-add">
-        <p className="tool-section-label">Add expense</p>
-        <div className="expense-add-grid">
-          <select className="tool-input" value={cat} onChange={e => setCat(e.target.value)}>
-            {EXPENSE_CATS.map(c => <option key={c}>{c}</option>)}
-          </select>
-          <input className="tool-input" placeholder="Label (e.g. Electricity)" value={label}
-            onChange={e => setLabel(e.target.value)} />
-          <div className="prefix-wrap" style={{ flex: "none" }}>
-            <span>$</span>
-            <input className="tool-input" type="number" value={amount || ""} min={0}
-              placeholder="Amount" onChange={e => setAmount(+e.target.value)} style={{ paddingLeft: 22 }} />
-          </div>
-          <select className="tool-input" value={recurring ? "monthly" : "one-time"}
-            onChange={e => setRecurring(e.target.value === "monthly")}>
-            <option value="monthly">Monthly</option>
-            <option value="one-time">One-time</option>
-          </select>
-          <button className="tool-btn-primary" onClick={add}>Add</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ── Occupancy Tracker ──────────────────────────────────────────────────── */
-const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-
-function OccupancyTracker() {
-  const [data, setData] = useState(
-    MONTHS.map((m, i) => ({
-      month: m,
-      booked: [12, 14, 18, 22, 20, 28, 30, 29, 19, 16, 13, 15][i],
-      nightly: 140,
-    }))
-  );
-  const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
-
-  const update = (i: number, field: "booked" | "nightly", val: number) => {
-    setData(data.map((d, idx) => idx === i ? { ...d, [field]: val } : d));
-  };
-
-  const maxBooked = Math.max(...data.map(d => d.booked));
-  const totalNights = data.reduce((s, d) => s + d.booked, 0);
-  const avgOcc = Math.round((totalNights / 365) * 100);
-  const totalRevenue = data.reduce((s, d) => s + d.booked * d.nightly, 0);
-  const bestMonth = data.reduce((best, d, i) =>
-    d.booked * d.nightly > data[best].booked * data[best].nightly ? i : best, 0);
-
-  return (
-    <div className="tool-body">
-      <div className="tool-grid-4">
-        {[
-          { label: "Avg occupancy rate", val: avgOcc + "%", color: avgOcc >= 70 ? "var(--sage)" : avgOcc >= 50 ? "var(--amber)" : "var(--coral)" },
-          { label: "Total nights booked", val: totalNights.toLocaleString(), color: "var(--text)" },
-          { label: "Annual revenue est.", val: "$" + totalRevenue.toLocaleString(), color: "var(--sage)" },
-          { label: "Best month", val: MONTHS[bestMonth], color: "var(--text)" },
-        ].map(m => (
-          <div key={m.label} className="metric-card">
-            <p className="metric-label">{m.label}</p>
-            <p className="metric-value" style={{ color: m.color }}>{m.val}</p>
-          </div>
-        ))}
-      </div>
-
-      <div className="occ-chart">
-        {data.map((d, i) => {
-          const occ = Math.round((d.booked / 30) * 100);
-          const color = occ >= 70 ? "var(--sage)" : occ >= 50 ? "var(--amber)" : "var(--coral)";
-          return (
-            <div key={d.month} className="occ-bar-col" onClick={() => setSelectedMonth(selectedMonth === i ? null : i)}>
-              <span className="occ-bar-pct" style={{ color }}>{occ}%</span>
-              <div className="occ-bar-track">
-                <div className="occ-bar-fill" style={{
-                  height: `${(d.booked / maxBooked) * 100}%`,
-                  background: selectedMonth === i ? "var(--amber)" : color,
-                }} />
-              </div>
-              <span className="occ-bar-month">{d.month}</span>
-            </div>
-          );
-        })}
-      </div>
-
-      {selectedMonth !== null && (
-        <div className="occ-edit-panel">
-          <p className="tool-section-label">Edit — {MONTHS[selectedMonth]}</p>
-          <div className="tool-grid-2">
-            <div className="tool-field">
-              <label>Nights booked (of 30)</label>
-              <input className="tool-input" type="number" min={0} max={31}
-                value={data[selectedMonth].booked}
-                onChange={e => update(selectedMonth, "booked", +e.target.value)} />
-            </div>
-            <div className="tool-field">
-              <label>Avg nightly rate</label>
-              <div className="prefix-wrap"><span>$</span>
-                <input className="tool-input" type="number" min={0}
-                  value={data[selectedMonth].nightly}
-                  onChange={e => update(selectedMonth, "nightly", +e.target.value)} />
-              </div>
-            </div>
-          </div>
-          <p className="occ-edit-note">
-            Revenue this month: <strong>${(data[selectedMonth].booked * data[selectedMonth].nightly).toLocaleString()}</strong>
-          </p>
-        </div>
-      )}
-
-      <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 8 }}>
-        Click any bar to edit that month's figures.
-      </p>
-    </div>
-  );
-}
-
 /* ── Tools hub ──────────────────────────────────────────────────────────── */
 const TOOLS: { id: Tool; icon: string; label: string; description: string; tag: string }[] = [
-  { id: "roi",       icon: "📈", label: "ROI Calculator",    description: "Estimate returns on a property before you buy.",        tag: "Finance" },
-  { id: "checklist", icon: "✅", label: "Host Checklist",    description: "Stay on top of every step of the hosting cycle.",       tag: "Operations" },
-  { id: "notes",     icon: "📝", label: "Notes & To-dos",    description: "Quick-capture host notes and action items.",            tag: "Productivity" },
-  { id: "expense",   icon: "🧾", label: "Expense Estimator", description: "Model your monthly costs and annual burn rate.",        tag: "Finance" },
-  { id: "occupancy", icon: "📅", label: "Occupancy Tracker", description: "Log nights booked per month and visualise performance.", tag: "Analytics" },
+  { id: "roi",       icon: "📈", label: "ROI Calculator", description: "Estimate returns on a property before you buy.",  tag: "Finance" },
+  { id: "checklist", icon: "✅", label: "Host Checklist", description: "Stay on top of every step of the hosting cycle.", tag: "Operations" },
+  { id: "notes",     icon: "📝", label: "Notes & To-dos", description: "Quick-capture host notes and action items.",      tag: "Productivity" },
 ];
 
 export default function ToolsPage() {
@@ -620,12 +437,29 @@ export default function ToolsPage() {
     <>
       <style>{CSS}</style>
 
+      <header className="tools-nav-header">
+        <div className="tools-nav-inner">
+          <Link href="/" className="tools-logo">
+            <img src="/logo.png" alt="Tractar" className="tools-logo-img" />
+          </Link>
+          <nav className="tools-nav">
+            <Link href="/">Home</Link>
+            <Link href="/blog">Blog</Link>
+            <Link href="/login" className="tools-nav-cta">Get started free →</Link>
+          </nav>
+        </div>
+      </header>
+
       <div className="tools-header">
         <div className="tools-header-inner">
-          {active && (
+          {active ? (
             <button className="tools-back-btn" onClick={() => setActive(null)}>
               ← Back to Tools
             </button>
+          ) : (
+            <Link href="/" className="tools-back-btn">
+              ← Back to Home
+            </Link>
           )}
           <div>
             <h1 className="tools-title">
@@ -660,17 +494,33 @@ export default function ToolsPage() {
             {active === "roi"       && <ROICalculator />}
             {active === "checklist" && <HostChecklist />}
             {active === "notes"     && <NotesTodo />}
-            {active === "expense"   && <ExpenseEstimator />}
-            {active === "occupancy" && <OccupancyTracker />}
           </div>
         )}
       </div>
+
+      <footer className="tools-footer">
+        <div className="tools-footer-inner">
+          <Link href="/" className="tools-footer-brand">
+            <img src="/logo.png" alt="Tractar" className="tools-logo-img" />
+          </Link>
+          <nav className="tools-footer-links">
+            <Link href="/privacy-policy">Privacy</Link>
+            <Link href="/terms-of-service">Terms</Link>
+            <Link href="/contact">Contact</Link>
+          </nav>
+          <p className="tools-footer-copy">© 2026 Tractar. All rights reserved.</p>
+        </div>
+      </footer>
     </>
   );
 }
 
 /* ── CSS ─────────────────────────────────────────────────────────────────── */
 const CSS = `
+  @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600;700&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
   :root {
     --bg:    #0b0c10;
     --bg2:   #111318;
@@ -687,6 +537,33 @@ const CSS = `
     --sans:  'Geist', system-ui, sans-serif;
     --mono:  'Geist Mono', monospace;
   }
+
+  body { font-family: var(--sans); background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; }
+  a { text-decoration: none; color: inherit; }
+
+  /* ── Top nav ── */
+  .tools-nav-header {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(11,12,16,0.92); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--bd);
+    padding: 0 48px; height: 68px;
+    display: flex; align-items: center;
+  }
+  .tools-nav-inner {
+    max-width: 1100px; margin: 0 auto; width: 100%;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .tools-logo { display: flex; align-items: center; }
+  .tools-logo-img { height: 48px; width: auto; filter: brightness(0.9) saturate(0.8); }
+  .tools-nav { display: flex; align-items: center; gap: 28px; }
+  .tools-nav a { font-size: 13px; color: var(--muted); transition: color 0.15s; }
+  .tools-nav a:hover { color: var(--text); }
+  .tools-nav-cta {
+    background: var(--sage); color: #0b0c10 !important;
+    padding: 8px 16px; border-radius: 8px; font-weight: 500;
+    transition: opacity 0.15s;
+  }
+  .tools-nav-cta:hover { opacity: 0.88; color: #0b0c10 !important; }
 
   /* ── Page layout ── */
   .tools-header {
@@ -714,16 +591,18 @@ const CSS = `
     padding: 40px 48px 80px;
   }
 
-  /* ── Tool grid ── */
+  /* ── Tool grid (vertical list) ── */
   .tools-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-width: 680px;
+    margin: 0 auto;
   }
   .tool-card {
     display: flex; align-items: center; gap: 16px;
     background: var(--bg2); border: 1px solid var(--bd);
-    border-radius: 14px; padding: 20px 24px;
+    border-radius: 14px; padding: 18px 24px;
     cursor: pointer; text-align: left; width: 100%;
     font-family: var(--sans);
     transition: border-color 0.18s, background 0.18s, transform 0.15s;
@@ -731,7 +610,7 @@ const CSS = `
   .tool-card:hover {
     border-color: var(--bd2);
     background: var(--bg3);
-    transform: translateY(-2px);
+    transform: translateX(4px);
   }
   .tool-card-icon {
     font-size: 28px; width: 52px; height: 52px;
@@ -913,54 +792,30 @@ const CSS = `
   .note-text { flex: 1; font-size: 13px; color: var(--text); }
   .note-date { font-size: 11px; color: var(--faint); flex-shrink: 0; }
 
-  /* ── Expense specific ── */
-  .expense-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
-  .expense-group { display: flex; flex-direction: column; gap: 4px; }
-  .expense-group-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-  .expense-group-total { font-size: 13px; font-weight: 600; color: var(--coral); font-family: var(--mono); }
-  .expense-row {
-    display: flex; align-items: center; gap: 10px;
-    background: var(--bg3); border: 1px solid var(--bd);
-    border-radius: 8px; padding: 9px 12px; font-size: 13px;
+  /* ── Footer ── */
+  .tools-footer {
+    border-top: 1px solid var(--bd);
+    background: var(--bg2); padding: 28px 48px;
   }
-  .expense-label { flex: 1; color: var(--text); }
-  .expense-recurring { font-size: 10px; color: var(--faint); background: var(--bd); border-radius: 4px; padding: 2px 7px; }
-  .expense-amount { color: var(--coral); font-family: var(--mono); font-weight: 600; }
-  .expense-add { border-top: 1px solid var(--bd); padding-top: 20px; }
-  .expense-add-grid { display: grid; grid-template-columns: 1fr 1fr 120px 100px auto; gap: 8px; }
-
-  /* ── Occupancy specific ── */
-  .occ-chart {
-    display: flex; align-items: flex-end; gap: 6px;
-    height: 180px; padding: 0 4px;
+  .tools-footer-inner {
+    max-width: 1100px; margin: 0 auto;
+    display: flex; align-items: center; gap: 32px; flex-wrap: wrap;
   }
-  .occ-bar-col {
-    flex: 1; display: flex; flex-direction: column; align-items: center;
-    gap: 4px; cursor: pointer; height: 100%;
-  }
-  .occ-bar-pct { font-size: 9px; font-weight: 600; }
-  .occ-bar-track {
-    flex: 1; width: 100%; background: var(--bg3); border-radius: 4px;
-    display: flex; flex-direction: column; justify-content: flex-end; overflow: hidden;
-  }
-  .occ-bar-fill { width: 100%; border-radius: 4px; transition: height 0.3s, background 0.2s; }
-  .occ-bar-month { font-size: 10px; color: var(--muted); }
-  .occ-edit-panel {
-    background: var(--bg3); border: 1px solid var(--bd2);
-    border-radius: 10px; padding: 16px 20px;
-    display: flex; flex-direction: column; gap: 12px;
-  }
-  .occ-edit-note { font-size: 12px; color: var(--muted); }
-  .occ-edit-note strong { color: var(--sage); }
+  .tools-footer-brand { margin-right: auto; }
+  .tools-footer-links { display: flex; gap: 24px; }
+  .tools-footer-links a { font-size: 12px; color: var(--muted); transition: color 0.15s; }
+  .tools-footer-links a:hover { color: var(--text); }
+  .tools-footer-copy { font-size: 12px; color: var(--faint); }
 
   /* ── Responsive ── */
   @media (max-width: 768px) {
+    .tools-nav-header { padding: 0 20px; }
+    .tools-nav a:not(.tools-nav-cta) { display: none; }
     .tools-header { padding: 32px 20px 20px; }
     .tools-page { padding: 24px 16px 60px; }
     .tool-body { padding: 20px 16px; }
     .tool-grid-2 { grid-template-columns: 1fr; }
-    .expense-add-grid { grid-template-columns: 1fr 1fr; }
-    .tools-grid { grid-template-columns: 1fr; }
     .currency-toggle-row { flex-direction: column; align-items: flex-start; gap: 10px; }
+    .tools-footer { padding: 24px 20px; }
   }
 `;

@@ -186,7 +186,7 @@ export default function LandingPage() {
         <div className="lp-hero-inner">
           <div className="lp-hero-left">
             <h1 className="lp-headline">
-              Your rental is a <em>business.</em>
+              Your Airbnb is a <em>business.</em>
               <br />
               Run it like one.
             </h1>

@@ -77,6 +77,7 @@ export async function getAllPosts(): Promise<Post[]> {
 }
 
 export async function getPostBySlug(slug: string): Promise<Post | null> {
+  if (!slug) return null;
   const res = await client.getEntries({
     content_type:   "post",
     "fields.slug":  slug,

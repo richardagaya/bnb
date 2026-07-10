@@ -14,13 +14,14 @@ export async function generateStaticParams() {
   return posts.map(p => ({ slug: p.slug }));
 }
 
+type PageProps = {
+  params: Promise<{ slug: string }>;
+};
+
 /* ── Metadata ────────────────────────────────────────────────────────────── */
-export async function generateMetadata({
-  params,
-}: {
-  params: { slug: string };
-}): Promise<Metadata> {
-  const post = await getPostBySlug(params.slug);
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const post = await getPostBySlug(slug);
   if (!post) return { title: "Post not found — Tractar" };
   return {
     title:       `${post.seoTitle} — Tractar Blog`,
@@ -80,12 +81,9 @@ function formatDate(iso: string) {
 }
 
 /* ── Page ────────────────────────────────────────────────────────────────── */
-export default async function PostPage({
-  params,
-}: {
-  params: { slug: string };
-}) {
-  const post = await getPostBySlug(params.slug);
+export default async function PostPage({ params }: PageProps) {
+  const { slug } = await params;
+  const post = await getPostBySlug(slug);
   if (!post) notFound();
 
   return (
