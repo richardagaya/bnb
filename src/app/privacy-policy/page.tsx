@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import fs from "fs";
+import path from "path";
 import Link from "next/link";
 
 export const metadata: Metadata = {
@@ -7,87 +9,135 @@ export const metadata: Metadata = {
 };
 
 export default function PrivacyPolicyPage() {
+  const privacyPolicyHTML = fs.readFileSync(
+    path.join(process.cwd(), "src/content/privacy-policy.html"),
+    "utf-8"
+  );
+
   return (
-    <main className="min-h-screen bg-[#0b0c10] px-6 py-12 text-[#e8e6df]">
-      <div className="mx-auto max-w-3xl">
-        <Link href="/" className="mb-10 inline-flex items-center">
-          <img
-            src="/logo.png"
-            alt="Tractar"
-            className="h-16 w-auto brightness-[0.3] contrast-200 saturate-200"
-          />
-        </Link>
+    <>
+      <style>{PAGE_CSS}</style>
 
-        <article className="rounded-2xl border border-[#2a2d38] bg-[#111318] p-8 shadow-2xl shadow-black/20">
-          <p className="mb-3 text-sm font-semibold uppercase tracking-[0.2em] text-[#81B29A]">
-            Privacy Policy
-          </p>
-          <h1 className="mb-3 text-3xl font-semibold tracking-tight">
-            Tractar Privacy Policy
-          </h1>
-          <p className="mb-8 text-sm text-[#9da0ad]">Last updated: April 29, 2026</p>
+      <header className="pp-header">
+        <div className="pp-header-inner">
+          <Link href="/" className="pp-logo">
+            <img src="/logo.png" alt="Tractar" className="pp-logo-img" />
+          </Link>
+          <nav className="pp-nav">
+            <Link href="/">Home</Link>
+            <Link href="/blog">Blog</Link>
+            <Link href="/tools">Tools</Link>
+            <Link href="/login" className="pp-nav-cta">
+              Get started free →
+            </Link>
+          </nav>
+        </div>
+      </header>
 
-          <div className="space-y-7 text-sm leading-7 text-[#c8c5bd]">
-            <section>
-              <h2 className="mb-2 text-xl font-semibold text-[#f7f4ec]">Information We Collect</h2>
-              <p>
-                Tractar collects the information you provide when creating an account,
-                managing properties, tracking bookings, expenses, referrals, and
-                communicating with us. This may include your name, email address,
-                property details, booking records, expense records, and related business data.
-              </p>
-            </section>
+      <main className="pp-main">
+        <div
+          className="pp-content"
+          dangerouslySetInnerHTML={{ __html: privacyPolicyHTML }}
+        />
+      </main>
 
-            <section>
-              <h2 className="mb-2 text-xl font-semibold text-[#f7f4ec]">How We Use Information</h2>
-              <p>
-                We use your information to provide and improve Tractar, authenticate your
-                account, store your rental management data, send service messages, respond to
-                support requests, and understand how the product is used.
-              </p>
-            </section>
-
-            <section>
-              <h2 className="mb-2 text-xl font-semibold text-[#f7f4ec]">Data Sharing</h2>
-              <p>
-                We do not sell your personal information. We may share limited information with
-                service providers that help us operate Tractar, such as hosting, analytics,
-                authentication, email delivery, and database services.
-              </p>
-            </section>
-
-            <section>
-              <h2 className="mb-2 text-xl font-semibold text-[#f7f4ec]">Data Security</h2>
-              <p>
-                We use reasonable technical and organizational measures to protect your data.
-                No online service is completely secure, so you should use a strong password and
-                keep your login credentials private.
-              </p>
-            </section>
-
-            <section>
-              <h2 className="mb-2 text-xl font-semibold text-[#f7f4ec]">Your Choices</h2>
-              <p>
-                You may request access, correction, or deletion of your personal information by
-                contacting us. Some information may be retained where required for legal,
-                security, or operational reasons.
-              </p>
-            </section>
-
-            <section>
-              <h2 className="mb-2 text-xl font-semibold text-[#f7f4ec]">Contact</h2>
-              <p>
-                If you have questions about this Privacy Policy, contact Tractar support through
-                our{" "}
-                <Link href="/contact" className="text-[#81B29A] hover:underline">
-                  contact page
-                </Link>
-                .
-              </p>
-            </section>
-          </div>
-        </article>
-      </div>
-    </main>
+      <footer className="pp-footer">
+        <div className="pp-footer-inner">
+          <Link href="/" className="pp-footer-brand">
+            <img src="/logo.png" alt="Tractar" className="pp-logo-img" />
+          </Link>
+          <nav className="pp-footer-links">
+            <Link href="/privacy-policy">Privacy</Link>
+            <Link href="/terms-of-service">Terms</Link>
+            <Link href="/contact">Contact</Link>
+          </nav>
+          <p className="pp-footer-copy">© 2026 Tractar. All rights reserved.</p>
+        </div>
+      </footer>
+    </>
   );
 }
+
+const PAGE_CSS = `
+  @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600;700&display=swap');
+
+  :root {
+    --bg:    #0b0c10;
+    --bg2:   #111318;
+    --bd:    rgba(255,255,255,0.07);
+    --text:  #e8e6df;
+    --muted: #7a7d8a;
+    --faint: #3a3d4a;
+    --sage:  #81B29A;
+    --sans:  'Geist', system-ui, sans-serif;
+  }
+
+  .pp-header, .pp-main, .pp-footer { font-family: var(--sans); -webkit-font-smoothing: antialiased; }
+  .pp-header a, .pp-footer a { text-decoration: none; color: inherit; }
+
+  .pp-header {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(11,12,16,0.92); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--bd);
+    padding: 0 48px; height: 68px;
+    display: flex; align-items: center;
+  }
+  .pp-header-inner {
+    max-width: 1120px; margin: 0 auto; width: 100%;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .pp-logo { display: flex; align-items: center; }
+  .pp-logo-img { height: 48px; width: auto; filter: brightness(0.9) saturate(0.8); }
+  .pp-nav { display: flex; align-items: center; gap: 28px; }
+  .pp-nav a { font-size: 13px; color: var(--muted); transition: color 0.15s; }
+  .pp-nav a:hover { color: var(--text); }
+  .pp-nav-cta {
+    font-size: 13px; font-weight: 600;
+    background: var(--sage); color: #0b0c10;
+    padding: 8px 18px; border-radius: 8px;
+    transition: opacity 0.15s;
+  }
+  .pp-nav-cta:hover { opacity: 0.88; color: #0b0c10; }
+
+  .pp-main {
+    min-height: calc(100vh - 68px);
+    background: var(--bg);
+    color: var(--text);
+    overflow-x: clip;
+  }
+  .pp-content {
+    width: 100%;
+    max-width: 1120px;
+    margin: 0 auto;
+  }
+
+  .pp-footer {
+    border-top: 1px solid var(--bd);
+    background: var(--bg2); padding: 28px 48px;
+  }
+  .pp-footer-inner {
+    max-width: 1120px; margin: 0 auto;
+    display: flex; align-items: center; gap: 32px; flex-wrap: wrap;
+  }
+  .pp-footer-brand { margin-right: auto; }
+  .pp-footer-links { display: flex; gap: 24px; }
+  .pp-footer-links a { font-size: 12px; color: var(--muted); transition: color 0.15s; }
+  .pp-footer-links a:hover { color: var(--text); }
+  .pp-footer-copy { font-size: 12px; color: var(--faint); }
+
+  @media (max-width: 768px) {
+    .pp-header { padding: 0 16px; height: 60px; }
+    .pp-logo-img { height: 40px; }
+    .pp-nav { gap: 12px; }
+    .pp-nav a:not(.pp-nav-cta) { display: none; }
+    .pp-nav-cta { padding: 7px 14px; font-size: 12px; white-space: nowrap; }
+    .pp-footer { padding: 24px 16px; }
+    .pp-footer-inner {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 16px;
+    }
+    .pp-footer-brand { margin-right: 0; }
+    .pp-footer-links { flex-wrap: wrap; gap: 16px; }
+  }
+`;

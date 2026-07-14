@@ -1,0 +1,652 @@
+<div class="ttpp">
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600;700;800&display=swap');
+
+      .ttpp {
+        --ttpp-navy: #f7f4ec;
+        --ttpp-navy-soft: #c8c5bd;
+        --ttpp-orange: #81B29A;
+        --ttpp-orange-soft: rgba(129, 178, 154, 0.12);
+        --ttpp-ink: #c8c5bd;
+        --ttpp-muted: #7a7d8a;
+        --ttpp-line: rgba(255, 255, 255, 0.07);
+        --ttpp-bg: #0b0c10;
+        --ttpp-card: #111318;
+        --ttpp-serif: 'Instrument Serif', Georgia, serif;
+        --ttpp-sans: 'Geist', system-ui, sans-serif;
+
+        display: block;
+        width: 100%;
+        max-width: 100%;
+        overflow-x: clip;
+        font-family: var(--ttpp-sans);
+        color: var(--ttpp-ink);
+        background: var(--ttpp-bg);
+        line-height: 1.65;
+        -webkit-font-smoothing: antialiased;
+      }
+      .ttpp *, .ttpp *::before, .ttpp *::after { box-sizing: border-box; }
+      .ttpp p, .ttpp span, .ttpp li, .ttpp ul, .ttpp ol, .ttpp table,
+      .ttpp th, .ttpp td, .ttpp h1, .ttpp h2, .ttpp h3, .ttpp a {
+        font-family: inherit;
+        color: inherit;
+        line-height: inherit;
+        margin: 0;
+        padding: 0;
+      }
+    
+      .ttpp-shell {
+        max-width: 1120px;
+        margin: 0 auto;
+        padding: 48px 48px 80px;
+        display: grid;
+        grid-template-columns: minmax(0, 260px) minmax(0, 1fr);
+        gap: 56px;
+      }
+    
+      /* ---- Header ---- */
+      .ttpp-header {
+        grid-column: 1 / -1;
+        padding-bottom: 32px;
+        margin-bottom: 8px;
+        border-bottom: 1px solid var(--ttpp-line);
+      }
+      .ttpp-eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--ttpp-orange);
+        margin-bottom: 14px;
+      }
+      .ttpp-eyebrow::before {
+        content: "";
+        width: 7px;
+        height: 7px;
+        border-radius: 2px;
+        background: var(--ttpp-orange);
+        display: inline-block;
+      }
+      .ttpp-title {
+        font-family: var(--ttpp-serif);
+        font-size: clamp(32px, 4vw, 44px);
+        font-weight: 400;
+        letter-spacing: -0.02em;
+        color: var(--ttpp-navy);
+        margin-bottom: 10px;
+      }
+      .ttpp-updated {
+        font-size: 14px;
+        color: var(--ttpp-muted);
+      }
+      .ttpp-intro {
+        max-width: 720px;
+        margin-top: 22px;
+        font-size: 15.5px;
+        color: var(--ttpp-navy-soft);
+      }
+      .ttpp-intro p + p { margin-top: 12px; }
+      .ttpp-intro a, .ttpp-body a {
+        color: var(--ttpp-orange);
+        text-decoration: underline;
+        text-decoration-color: var(--ttpp-orange-soft);
+        text-underline-offset: 2px;
+      }
+
+      /* ---- TOC sidebar ---- */
+      .ttpp-toc {
+        align-self: start;
+        position: sticky;
+        top: 92px;
+      }
+      .ttpp-toc-label {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--ttpp-muted);
+        margin-bottom: 14px;
+        display: block;
+      }
+      .ttpp-toc ol {
+        list-style: none;
+        counter-reset: ttpp-toc-counter;
+        border-left: 2px solid var(--ttpp-line);
+      }
+      .ttpp-toc li {
+        counter-increment: ttpp-toc-counter;
+      }
+      .ttpp-toc a {
+        display: block;
+        font-size: 13.5px;
+        color: var(--ttpp-navy-soft);
+        text-decoration: none;
+        padding: 7px 0 7px 16px;
+        margin-left: -2px;
+        border-left: 2px solid transparent;
+        transition: color .15s ease, border-color .15s ease;
+      }
+      .ttpp-toc a:hover {
+        color: var(--ttpp-orange);
+        border-left-color: var(--ttpp-orange);
+      }
+      .ttpp-toc a::before {
+        content: counter(ttpp-toc-counter) ". ";
+        color: var(--ttpp-orange);
+        font-weight: 700;
+      }
+    
+      /* ---- Body ---- */
+      .ttpp-body { min-width: 0; overflow-wrap: anywhere; word-break: break-word; }
+    
+      .ttpp-summary {
+        background: var(--ttpp-card);
+        border: 1px solid var(--ttpp-line);
+        border-radius: 14px;
+        padding: 28px 28px 8px;
+        margin-bottom: 48px;
+      }
+      .ttpp-summary-title {
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--ttpp-orange);
+        margin-bottom: 6px;
+        display: block;
+      }
+      .ttpp-summary-lead {
+        font-size: 14px;
+        color: var(--ttpp-muted);
+        margin-bottom: 18px;
+        display: block;
+      }
+      .ttpp-qa { padding: 16px 0; border-top: 1px solid var(--ttpp-line); }
+      .ttpp-qa:first-of-type { border-top: none; padding-top: 0; }
+      .ttpp-qa dt {
+        font-weight: 700;
+        color: var(--ttpp-navy);
+        font-size: 14.5px;
+        margin-bottom: 4px;
+      }
+      .ttpp-qa dd {
+        font-size: 14.5px;
+        color: var(--ttpp-ink);
+      }
+    
+      .ttpp-section {
+        padding-top: 40px;
+        margin-top: 0;
+        scroll-margin-top: 92px;
+      }
+      .ttpp-section + .ttpp-section {
+        border-top: 1px solid var(--ttpp-line);
+      }
+      .ttpp-section-head {
+        display: flex;
+        align-items: baseline;
+        gap: 12px;
+        margin-bottom: 6px;
+      }
+      .ttpp-section-num {
+        font-size: 13px;
+        font-weight: 800;
+        color: var(--ttpp-orange);
+        flex-shrink: 0;
+      }
+      .ttpp-h2 {
+        font-size: 20px;
+        font-weight: 800;
+        color: var(--ttpp-navy);
+        letter-spacing: -0.01em;
+      }
+      .ttpp-tldr {
+        display: block;
+        background: var(--ttpp-orange-soft);
+        border-left: 3px solid var(--ttpp-orange);
+        color: var(--ttpp-navy);
+        font-size: 13.5px;
+        padding: 10px 14px;
+        border-radius: 0 8px 8px 0;
+        margin: 14px 0 20px;
+      }
+      .ttpp-tldr strong { font-weight: 800; }
+    
+      .ttpp-h3 {
+        font-size: 15.5px;
+        font-weight: 700;
+        color: var(--ttpp-navy);
+        margin-top: 22px;
+        margin-bottom: 8px;
+      }
+      .ttpp-body p {
+        font-size: 14.5px;
+        color: var(--ttpp-ink);
+        margin-bottom: 12px;
+      }
+      .ttpp-body ul, .ttpp-body ol.ttpp-list {
+        margin: 8px 0 16px;
+        padding-left: 20px;
+      }
+      .ttpp-body ul { list-style: disc; }
+      .ttpp-body ol.ttpp-list { list-style: decimal; }
+      .ttpp-body li {
+        font-size: 14.5px;
+        color: var(--ttpp-ink);
+        margin-bottom: 6px;
+      }
+      .ttpp-body strong { font-weight: 700; color: var(--ttpp-navy); }
+    
+      .ttpp-table-wrap {
+        overflow-x: auto;
+        margin: 16px 0 20px;
+        border: 1px solid var(--ttpp-line);
+        border-radius: 10px;
+      }
+      .ttpp-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13.5px;
+        min-width: 560px;
+      }
+      .ttpp-table th {
+        text-align: left;
+        background: var(--ttpp-card);
+        color: var(--ttpp-navy);
+        font-weight: 700;
+        padding: 10px 14px;
+        border-bottom: 1px solid var(--ttpp-line);
+      }
+      .ttpp-table td {
+        padding: 10px 14px;
+        border-top: 1px solid var(--ttpp-line);
+        color: var(--ttpp-ink);
+        vertical-align: top;
+      }
+      .ttpp-table tr:nth-child(even) td { background: rgba(255, 255, 255, 0.02); }
+      .ttpp-yes {
+        display: inline-block;
+        font-size: 11.5px;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 999px;
+        background: var(--ttpp-orange-soft);
+        color: var(--ttpp-orange);
+      }
+      .ttpp-no {
+        display: inline-block;
+        font-size: 11.5px;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--ttpp-muted);
+      }
+    
+      .ttpp-contact-card {
+        background: var(--ttpp-card);
+        border: 1px solid var(--ttpp-line);
+        color: var(--ttpp-navy);
+        border-radius: 14px;
+        padding: 28px;
+        margin-top: 12px;
+      }
+      .ttpp-contact-card p { color: var(--ttpp-navy-soft); margin-bottom: 4px; }
+      .ttpp-contact-card a { color: var(--ttpp-orange); }
+      .ttpp-contact-card .ttpp-h3 { color: var(--ttpp-navy); margin-top: 0; }
+    
+      .ttpp-footnote {
+        margin-top: 48px;
+        padding-top: 20px;
+        border-top: 1px solid var(--ttpp-line);
+        font-size: 12.5px;
+        color: var(--ttpp-muted);
+      }
+
+      @media (max-width: 860px) {
+        .ttpp-shell {
+          grid-template-columns: minmax(0, 1fr);
+          padding: 32px 24px 64px;
+          gap: 32px;
+        }
+        .ttpp-toc {
+          position: static;
+          top: auto;
+          margin-bottom: 8px;
+          padding-bottom: 28px;
+          border-bottom: 1px solid var(--ttpp-line);
+        }
+        .ttpp-toc a { font-size: 13px; padding: 6px 0 6px 14px; }
+        .ttpp-body { padding-top: 4px; }
+      }
+
+      @media (max-width: 640px) {
+        .ttpp-shell { padding: 28px 20px 48px; gap: 28px; }
+        .ttpp-header { padding-bottom: 24px; margin-bottom: 0; }
+        .ttpp-title { font-size: 28px; }
+        .ttpp-intro { font-size: 14.5px; margin-top: 16px; }
+        .ttpp-contact-pill { font-size: 13px; max-width: 100%; word-break: break-all; }
+        .ttpp-toc { padding-bottom: 24px; margin-bottom: 4px; }
+        .ttpp-summary { padding: 20px 16px 4px; margin-bottom: 32px; border-radius: 12px; }
+        .ttpp-section { padding-top: 28px; scroll-margin-top: 80px; }
+        .ttpp-section-head { flex-wrap: wrap; gap: 8px; }
+        .ttpp-h2 { font-size: 17px; line-height: 1.35; }
+        .ttpp-h3 { font-size: 15px; margin-top: 18px; }
+        .ttpp-body p, .ttpp-body li, .ttpp-qa dt, .ttpp-qa dd { font-size: 14px; }
+        .ttpp-tldr { padding: 10px 12px; font-size: 13px; margin: 12px 0 16px; }
+        .ttpp-contact-card { padding: 20px 16px; border-radius: 12px; }
+        .ttpp-table-wrap { max-width: 100%; -webkit-overflow-scrolling: touch; }
+        .ttpp-table { font-size: 12.5px; min-width: 520px; }
+        .ttpp-table th, .ttpp-table td { padding: 8px 10px; }
+        .ttpp-footnote { margin-top: 32px; font-size: 12px; }
+      }
+    </style>
+    
+    <div class="ttpp-shell">
+    
+      <header class="ttpp-header">
+        <span class="ttpp-eyebrow">Legal</span>
+        <h1 class="ttpp-title">Privacy Policy</h1>
+        <p class="ttpp-updated">Last updated July 12, 2026</p>
+        <div class="ttpp-intro">
+          <p>This Privacy Notice for Tracktar ("we," "us," or "our") describes how and why we access, collect, store, use, and/or share ("process") your personal information when you use our services ("Services"), including when you visit <a href="https://tracktar.com">tracktar.com</a>, use Tracktar to track your Airbnb payments, revenue, income, and expenses, or otherwise engage with us.</p>
+          <p>If you do not agree with our policies and practices, please do not use our Services. Questions or concerns can be sent to <a href="mailto:support@tracktar.com">support@tracktar.com</a>.</p>
+        </div>
+      </header>
+    
+      <nav class="ttpp-toc" aria-label="Table of contents">
+        <span class="ttpp-toc-label">On this page</span>
+        <ol>
+          <li><a href="#ttpp-1">What information do we collect?</a></li>
+          <li><a href="#ttpp-2">How do we process your information?</a></li>
+          <li><a href="#ttpp-3">What legal bases do we rely on?</a></li>
+          <li><a href="#ttpp-4">When and with whom do we share information?</a></li>
+          <li><a href="#ttpp-5">Cookies &amp; tracking technologies</a></li>
+          <li><a href="#ttpp-6">AI-based products</a></li>
+          <li><a href="#ttpp-7">Social logins</a></li>
+          <li><a href="#ttpp-8">How long do we keep information?</a></li>
+          <li><a href="#ttpp-9">How do we keep information safe?</a></li>
+          <li><a href="#ttpp-10">Your privacy rights</a></li>
+          <li><a href="#ttpp-11">Do-Not-Track controls</a></li>
+          <li><a href="#ttpp-12">US state resident rights</a></li>
+          <li><a href="#ttpp-13">Updates to this notice</a></li>
+          <li><a href="#ttpp-14">Contact us</a></li>
+          <li><a href="#ttpp-15">Review, update, or delete your data</a></li>
+        </ol>
+      </nav>
+    
+      <main class="ttpp-body">
+    
+        <section class="ttpp-summary" aria-label="Summary of key points">
+          <span class="ttpp-summary-title">Summary</span>
+          <span class="ttpp-summary-lead">The key points, in plain terms — full detail is in the numbered sections below.</span>
+    
+          <dl>
+            <div class="ttpp-qa">
+              <dt>What personal information do we process?</dt>
+              <dd>Depends on how you interact with Tracktar — account details, usage data, and property/financial data you choose to enter.</dd>
+            </div>
+            <div class="ttpp-qa">
+              <dt>Do we process sensitive personal information?</dt>
+              <dd>No. We do not process sensitive information such as racial or ethnic origin, sexual orientation, or religious beliefs.</dd>
+            </div>
+            <div class="ttpp-qa">
+              <dt>Do we collect information from third parties?</dt>
+              <dd>No, we do not collect information about you from third parties.</dd>
+            </div>
+            <div class="ttpp-qa">
+              <dt>How do we process your information?</dt>
+              <dd>To provide, improve, and secure the Services, to communicate with you, and to comply with the law — always with a valid legal basis.</dd>
+            </div>
+            <div class="ttpp-qa">
+              <dt>Who do we share information with?</dt>
+              <dd>Only specific categories of service providers (hosting, authentication, analytics, AI) under contract, or when required by law.</dd>
+            </div>
+            <div class="ttpp-qa">
+              <dt>How do we keep information safe?</dt>
+              <dd>Reasonable technical and organizational safeguards — though no method of transmission or storage is ever 100% secure.</dd>
+            </div>
+            <div class="ttpp-qa">
+              <dt>What are your rights?</dt>
+              <dd>Depending on where you live, you may be able to access, correct, delete, or port your data, and object to certain processing.</dd>
+            </div>
+          </dl>
+        </section>
+    
+        <section class="ttpp-section" id="ttpp-1">
+          <div class="ttpp-section-head">
+            <span class="ttpp-section-num">01</span>
+            <h2 class="ttpp-h2">What information do we collect?</h2>
+          </div>
+    
+          <h3 class="ttpp-h3">Personal information you disclose to us</h3>
+          <span class="ttpp-tldr"><strong>In short:</strong> we collect personal information that you voluntarily provide to us.</span>
+          <p>We collect personal information that you voluntarily provide when you register on the Services, express interest in our products, participate in activities on the Services, or otherwise contact us. The personal information we collect may include:</p>
+          <ul>
+            <li>Names</li>
+            <li>Email addresses</li>
+            <li>Usernames</li>
+            <li>Passwords</li>
+            <li>Contact preferences</li>
+            <li>Contact or authentication data</li>
+            <li>Mailing addresses</li>
+          </ul>
+          <p>We do not process sensitive information. If you register using a social media account, we collect certain profile information from that provider — see "How do we handle your social logins?" below.</p>
+          <p>All personal information you provide to us must be true, complete, and accurate, and you must notify us of any changes.</p>
+    
+          <h3 class="ttpp-h3">Information automatically collected</h3>
+          <span class="ttpp-tldr"><strong>In short:</strong> some information — such as your IP address and device characteristics — is collected automatically when you use the Services.</span>
+          <p>This information does not reveal your specific identity but may include device and usage information used to maintain security, operate the Services, and support internal analytics. It includes:</p>
+          <ul>
+            <li><strong>Log and usage data</strong> — diagnostic, usage, and performance information our servers record automatically, including IP address, browser type, activity timestamps, and pages viewed.</li>
+            <li><strong>Device data</strong> — information about the computer, phone, or tablet you use to access the Services, such as hardware model, operating system, and Internet service provider.</li>
+            <li><strong>Location data</strong> — imprecise location inferred from your IP address. You can opt out via your device settings, though this may limit some features.</li>
+          </ul>
+          <p>Our use of information received from Google APIs adheres to the Google API Services User Data Policy, including the Limited Use requirements.</p>
+        </section>
+    
+        <section class="ttpp-section" id="ttpp-2">
+          <div class="ttpp-section-head">
+            <span class="ttpp-section-num">02</span>
+            <h2 class="ttpp-h2">How do we process your information?</h2>
+          </div>
+          <span class="ttpp-tldr"><strong>In short:</strong> we process your information to provide, improve, and administer the Services, communicate with you, prevent fraud, and comply with law.</span>
+          <p>We process personal information for a variety of reasons, depending on how you interact with the Services, including to:</p>
+          <ul>
+            <li>Facilitate account creation and authentication, and manage user accounts.</li>
+            <li>Request feedback and contact you about your use of the Services.</li>
+            <li>Identify usage trends so we can better understand and improve the Services.</li>
+            <li>Save or protect an individual's vital interest, such as to prevent harm.</li>
+          </ul>
+        </section>
+    
+        <section class="ttpp-section" id="ttpp-3">
+          <div class="ttpp-section-head">
+            <span class="ttpp-section-num">03</span>
+            <h2 class="ttpp-h2">What legal bases do we rely on?</h2>
+          </div>
+          <span class="ttpp-tldr"><strong>In short:</strong> we only process your information when we have a valid legal reason to — consent, legal obligation, protecting vital interests, or legitimate business interests.</span>
+    
+          <h3 class="ttpp-h3">If you are located in the EU or UK</h3>
+          <p>The GDPR and UK GDPR require us to explain our legal bases for processing:</p>
+          <ul>
+            <li><strong>Consent</strong> — where you've given permission for a specific purpose. You can withdraw consent at any time.</li>
+            <li><strong>Legitimate interests</strong> — where processing is reasonably necessary to achieve our business interests and doesn't outweigh your rights, such as analyzing and improving how the Services are used.</li>
+            <li><strong>Legal obligations</strong> — where required to comply with law, cooperate with regulators, or defend our legal rights.</li>
+            <li><strong>Vital interests</strong> — where necessary to protect someone's safety.</li>
+          </ul>
+    
+          <h3 class="ttpp-h3">If you are located in Canada</h3>
+          <p>We process information with your express or implied consent, which you may withdraw at any time. In limited cases permitted by law — such as fraud detection, business transactions, or compliance with a court order — we may process information without consent.</p>
+        </section>
+    
+        <section class="ttpp-section" id="ttpp-4">
+          <div class="ttpp-section-head">
+            <span class="ttpp-section-num">04</span>
+            <h2 class="ttpp-h2">When and with whom do we share your information?</h2>
+          </div>
+          <span class="ttpp-tldr"><strong>In short:</strong> we share information in specific situations and with specific categories of third parties, always under contract.</span>
+          <p>We may share your data with vendors, consultants, and service providers who perform work on our behalf and are contractually required to safeguard it. These categories include:</p>
+          <ul>
+            <li>Ad networks</li>
+            <li>AI platforms</li>
+            <li>Sales &amp; marketing tools</li>
+            <li>Website hosting service providers</li>
+            <li>User account registration &amp; authentication services</li>
+            <li>Data analytics services</li>
+          </ul>
+          <p>We may also share information in connection with a business transfer (such as a merger or acquisition), with our affiliates under this same Privacy Notice, or with business partners to offer you certain products or promotions.</p>
+        </section>
+    
+        <section class="ttpp-section" id="ttpp-5">
+          <div class="ttpp-section-head">
+            <span class="ttpp-section-num">05</span>
+            <h2 class="ttpp-h2">Do we use cookies and other tracking technologies?</h2>
+          </div>
+          <span class="ttpp-tldr"><strong>In short:</strong> yes, to keep the Services secure and to understand usage.</span>
+          <p>We use cookies and similar technologies to maintain security, prevent crashes, fix bugs, save preferences, and support core site functions. Some third parties and service providers may also use tracking technologies for analytics on our Services.</p>
+          <h3 class="ttpp-h3">Google Analytics</h3>
+          <p>We may share information with Google Analytics to track and analyze use of the Services. You can opt out of Google Analytics tracking by visiting <a href="https://tools.google.com/dlpage/gaoptout" target="_blank" rel="noopener">Google's opt-out page</a>.</p>
+        </section>
+    
+        <section class="ttpp-section" id="ttpp-6">
+          <div class="ttpp-section-head">
+            <span class="ttpp-section-num">06</span>
+            <h2 class="ttpp-h2">Do we offer AI-based products?</h2>
+          </div>
+          <span class="ttpp-tldr"><strong>In short:</strong> yes — features like AI-assisted insights are powered by third-party AI providers, including Anthropic.</span>
+          <p>As part of the Services, we offer features powered by artificial intelligence and machine learning (collectively, "AI Products"), including AI-driven automation such as profit &amp; loss insights and expense categorisation. Your inputs, outputs, and related personal information are shared with and processed by our AI Service Providers to enable these features. All such processing is handled in line with this Privacy Notice and our agreements with those providers.</p>
+        </section>
+    
+        <section class="ttpp-section" id="ttpp-7">
+          <div class="ttpp-section-head">
+            <span class="ttpp-section-num">07</span>
+            <h2 class="ttpp-h2">How do we handle your social logins?</h2>
+          </div>
+          <span class="ttpp-tldr"><strong>In short:</strong> if you register using a social account, we receive limited profile information from that provider.</span>
+          <p>If you choose to register or log in using a third-party social media account, we receive certain profile information — typically your name, email address, and profile picture. We use this only for the purposes described in this Notice. We are not responsible for how your social media provider handles your information; review their own privacy notice for details.</p>
+        </section>
+    
+        <section class="ttpp-section" id="ttpp-8">
+          <div class="ttpp-section-head">
+            <span class="ttpp-section-num">08</span>
+            <h2 class="ttpp-h2">How long do we keep your information?</h2>
+          </div>
+          <span class="ttpp-tldr"><strong>In short:</strong> for as long as necessary to fulfil the purposes in this Notice, unless the law requires longer.</span>
+          <p>No purpose in this Notice requires us to keep your personal information for longer than the period you maintain an account with us. When there is no ongoing legitimate need to process your data, we delete or anonymize it — or, where that isn't immediately possible (for example, backup archives), we securely isolate it until deletion is possible.</p>
+        </section>
+    
+        <section class="ttpp-section" id="ttpp-9">
+          <div class="ttpp-section-head">
+            <span class="ttpp-section-num">09</span>
+            <h2 class="ttpp-h2">How do we keep your information safe?</h2>
+          </div>
+          <span class="ttpp-tldr"><strong>In short:</strong> we use reasonable technical and organizational security measures.</span>
+          <p>Despite our safeguards, no method of transmission over the Internet or electronic storage is 100% secure, so we cannot guarantee that unauthorized third parties will never defeat our security. Transmission of personal information to and from the Services is at your own risk — access it only within a secure environment.</p>
+        </section>
+    
+        <section class="ttpp-section" id="ttpp-10">
+          <div class="ttpp-section-head">
+            <span class="ttpp-section-num">10</span>
+            <h2 class="ttpp-h2">What are your privacy rights?</h2>
+          </div>
+          <span class="ttpp-tldr"><strong>In short:</strong> depending on where you live, you may have rights to access, correct, delete, or restrict use of your information.</span>
+          <p>If you are in the EEA, UK, Switzerland, or Canada, you may have the right to access and obtain a copy of your data, request rectification or erasure, restrict processing, request data portability, and — where applicable — object to automated decision-making. Contact us via the details in "Contact us" to make a request.</p>
+          <p>If you are in the EEA or UK, you may also lodge a complaint with your local data protection authority. If you are in Switzerland, you may contact the Federal Data Protection and Information Commissioner.</p>
+          <p><strong>Withdrawing consent</strong> — where we rely on your consent, you may withdraw it at any time; this won't affect processing carried out before withdrawal.</p>
+          <p><strong>Marketing communications</strong> — unsubscribe anytime via the link in our emails or by contacting us. We may still send necessary service-related messages.</p>
+          <p><strong>Account information</strong> — review or update your account in your settings, or contact us to terminate it. We may retain limited information afterward to prevent fraud, resolve disputes, or meet legal obligations.</p>
+        </section>
+    
+        <section class="ttpp-section" id="ttpp-11">
+          <div class="ttpp-section-head">
+            <span class="ttpp-section-num">11</span>
+            <h2 class="ttpp-h2">Controls for Do-Not-Track features</h2>
+          </div>
+          <p>No uniform technical standard for Do-Not-Track (DNT) signals currently exists, so we do not respond to browser DNT signals at this time. If a legal standard is adopted, we'll update this Notice accordingly.</p>
+          <p><strong>Global Privacy Control (GPC)</strong> — we recognize and honor GPC signals. If your browser sends one, we treat it as a valid opt-out of the sale or sharing of your personal information for targeted advertising under applicable state laws, including the CCPA, applied automatically.</p>
+        </section>
+    
+        <section class="ttpp-section" id="ttpp-12">
+          <div class="ttpp-section-head">
+            <span class="ttpp-section-num">12</span>
+            <h2 class="ttpp-h2">Do US residents have specific privacy rights?</h2>
+          </div>
+          <span class="ttpp-tldr"><strong>In short:</strong> residents of certain US states have rights to access, correct, delete, and port their data, and to opt out of certain uses.</span>
+          <p>This applies to residents of California, Colorado, Connecticut, Delaware, Florida, Indiana, Iowa, Kentucky, Maryland, Minnesota, Montana, Nebraska, New Hampshire, New Jersey, Oregon, Rhode Island, Tennessee, Texas, Utah, and Virginia.</p>
+    
+          <h3 class="ttpp-h3">Categories of personal information we collect</h3>
+          <div class="ttpp-table-wrap">
+            <table class="ttpp-table">
+              <thead>
+                <tr><th>Category</th><th>Examples</th><th>Collected</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>A. Identifiers</td><td>Name, address, phone, IP address, email, account name</td><td><span class="ttpp-yes">Yes</span></td></tr>
+                <tr><td>B. CA Customer Records categories</td><td>Name, contact info, employment, financial information</td><td><span class="ttpp-no">No</span></td></tr>
+                <tr><td>C. Protected classifications</td><td>Gender, age, race, ethnicity, marital status</td><td><span class="ttpp-no">No</span></td></tr>
+                <tr><td>D. Commercial information</td><td>Transaction history, purchase and payment information</td><td><span class="ttpp-no">No</span></td></tr>
+                <tr><td>E. Biometric information</td><td>Fingerprints, voiceprints</td><td><span class="ttpp-yes">Yes</span></td></tr>
+                <tr><td>F. Internet / network activity</td><td>Browsing history, interactions with the Services</td><td><span class="ttpp-no">No</span></td></tr>
+                <tr><td>G. Geolocation data</td><td>Device location</td><td><span class="ttpp-yes">Yes</span></td></tr>
+                <tr><td>H. Audio / sensory information</td><td>Images, audio, or video recordings</td><td><span class="ttpp-yes">Yes</span></td></tr>
+                <tr><td>I. Professional / employment</td><td>Business contact details, job title, work history</td><td><span class="ttpp-yes">Yes</span></td></tr>
+                <tr><td>J. Education information</td><td>Student records, directory information</td><td><span class="ttpp-no">No</span></td></tr>
+                <tr><td>K. Inferences</td><td>Profiles or summaries drawn from collected data</td><td><span class="ttpp-no">No</span></td></tr>
+                <tr><td>L. Sensitive personal information</td><td>—</td><td><span class="ttpp-no">No</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p><em>Note: verify this table against Tracktar's actual data collection (e.g. whether you truly collect biometric, geolocation, or audio/sensory data) before publishing — see note at the end of this document.</em></p>
+    
+          <h3 class="ttpp-h3">Your rights</h3>
+          <ul>
+            <li>Right to know whether we're processing your data</li>
+            <li>Right to access your data</li>
+            <li>Right to correct inaccuracies</li>
+            <li>Right to request deletion</li>
+            <li>Right to obtain a copy of data you've shared with us</li>
+            <li>Right to non-discrimination for exercising these rights</li>
+            <li>Right to opt out of targeted advertising, sale, or certain profiling</li>
+          </ul>
+          <p>To exercise these rights, email <a href="mailto:support@tracktar.com">support@tracktar.com</a> or visit <a href="https://www.tracktar.com/contact">tracktar.com/contact</a>. We honor GPC opt-out signals automatically. You may designate an authorized agent to act on your behalf, subject to proof of authorization.</p>
+          <p>Upon receiving a request, we verify your identity using only the information provided in your request. If we decline to act on a request, you may appeal by emailing <a href="mailto:support@tracktar.com">support@tracktar.com</a>; if denied, you may escalate to your state attorney general.</p>
+          <p><strong>California "Shine the Light"</strong> — California residents may request, once a year and free of charge, details of any personal information we've disclosed to third parties for direct marketing purposes in the prior calendar year.</p>
+        </section>
+    
+        <section class="ttpp-section" id="ttpp-13">
+          <div class="ttpp-section-head">
+            <span class="ttpp-section-num">13</span>
+            <h2 class="ttpp-h2">Do we make updates to this notice?</h2>
+          </div>
+          <span class="ttpp-tldr"><strong>In short:</strong> yes, as needed to stay compliant with applicable law.</span>
+          <p>We may update this Privacy Notice from time to time. The "Last updated" date at the top reflects the latest revision. For material changes, we'll notify you by posting a prominent notice or sending a direct notification.</p>
+        </section>
+    
+        <section class="ttpp-section" id="ttpp-14">
+          <div class="ttpp-section-head">
+            <span class="ttpp-section-num">14</span>
+            <h2 class="ttpp-h2">How can you contact us about this notice?</h2>
+          </div>
+          <div class="ttpp-contact-card">
+            <h3 class="ttpp-h3">Tracktar</h3>
+            <p>Email: <a href="mailto:support@tracktar.com">support@tracktar.com</a></p>
+          </div>
+        </section>
+    
+        <section class="ttpp-section" id="ttpp-15">
+          <div class="ttpp-section-head">
+            <span class="ttpp-section-num">15</span>
+            <h2 class="ttpp-h2">How can you review, update, or delete your data?</h2>
+          </div>
+          <p>Depending on the laws of your country or US state of residence, you may have the right to request access to the personal information we collect about you, details of how it's been processed, or its correction or deletion. You may also withdraw your consent to processing where applicable. To make a request, contact us at <a href="mailto:support@tracktar.com">support@tracktar.com</a>.</p>
+        </section>
+    
+        <p class="ttpp-footnote">This Privacy Policy was drafted with reference to a Termly-generated template and adapted for Tracktar. It should be reviewed against Tracktar's actual data practices — including Firebase authentication, Contentful, hosting on Vercel, and any analytics or payment processing in use — before publishing, to ensure accuracy.</p>
+    
+      </main>
+    </div>
+    </div>
