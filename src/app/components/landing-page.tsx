@@ -113,7 +113,7 @@ export default function LandingPage() {
       {/* ── NAV ── */}
       <nav className={`lp-nav ${scrolled ? "lp-nav--stuck" : ""}`}>
         <a href="/" className="lp-logo" onClick={closeMobileNav}>
-          <img src="/logo.png" alt="Tractar" className="lp-logo-img" />
+          <img src="/logo.png" alt="Tracktar" className="lp-logo-img" />
         </a>
         <ul className="lp-nav-links">
           {NAV_LINKS.map((link) => (
@@ -669,7 +669,7 @@ export default function LandingPage() {
           </nav>
           <div className="lp-footer-social">
             <a
-              href="https://www.instagram.com/tracktar.app"
+              href="https://www.instagram.com/tractar.app"
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Instagram"
@@ -681,7 +681,7 @@ export default function LandingPage() {
               </svg>
             </a>
             <a
-              href="https://www.tiktok.com/@tracktar"
+              href="https://www.tiktok.com/@tracktar.app"
               target="_blank"
               rel="noopener noreferrer"
               aria-label="TikTok"
@@ -691,7 +691,7 @@ export default function LandingPage() {
               </svg>
             </a>
           </div>
-          <p className="lp-footer-copy">© 2026 Tractar. All rights reserved.</p>
+          <p className="lp-footer-copy">© 2026 Tracktar. All rights reserved.</p>
         </div>
       </footer>
     </>
