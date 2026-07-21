@@ -193,7 +193,7 @@ export default function LandingPage() {
 
             <p className="lp-hero-sub">
               Log bookings, track expenses, sync calendars, and see your exact
-              monthly profit — automatically. Everything in one clean dashboard,
+              monthly profit automatically. Everything in one clean dashboard,
               for every property you own.
             </p>
 
