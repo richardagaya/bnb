@@ -4,6 +4,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { documentToReactComponents } from "@contentful/rich-text-react-renderer";
 import { BLOCKS, INLINES, MARKS } from "@contentful/rich-text-types";
+import { AdSense } from "@/components/AdSense";
+import { getAdSenseSlot } from "@/lib/adsense";
 import { getPostBySlug, getAllPosts, type Post } from "@/lib/contentful";
 
 export const revalidate = 60;
@@ -85,6 +87,7 @@ export default async function PostPage({ params }: PageProps) {
   const { slug } = await params;
   const post = await getPostBySlug(slug);
   if (!post) notFound();
+  const adSlot = getAdSenseSlot("article");
 
   return (
     <>
@@ -133,12 +136,24 @@ export default async function PostPage({ params }: PageProps) {
           </div>
         )}
 
+        {adSlot && (
+          <div className="post-ad-wrap">
+            <AdSense slot={adSlot} className="post-ad" />
+          </div>
+        )}
+
         {/* Body */}
         <article className="post-body">
           <div className="post-body-inner rich-text">
             {documentToReactComponents(post.body, richTextOptions)}
           </div>
         </article>
+
+        {adSlot && (
+          <div className="post-ad-wrap post-ad-wrap--footer">
+            <AdSense slot={adSlot} className="post-ad" />
+          </div>
+        )}
 
         {/* CTA */}
         <div className="post-cta-wrap">
@@ -264,6 +279,16 @@ const CSS = `
     border: 1px solid var(--bd);
   }
 
+  /* ── Ads ── */
+  .post-ad-wrap {
+    max-width: 700px; margin: 0 auto; padding: 0 48px;
+  }
+  .post-ad-wrap--footer { padding-top: 0; margin-bottom: 12px; }
+  .post-ad {
+    min-height: 90px; overflow: hidden; border-radius: 10px;
+    border: 1px solid var(--bd); background: var(--bg2);
+  }
+
   /* ── Body / Rich text ── */
   .post-body { padding: 60px 48px; }
   .post-body-inner { max-width: 700px; margin: 0 auto; }
@@ -342,6 +367,7 @@ const CSS = `
     .blog-header { padding: 0 20px; }
     .post-hero { padding: 48px 20px 32px; }
     .post-cover-wrap { padding: 0 20px; }
+    .post-ad-wrap { padding: 0 20px; }
     .post-body { padding: 40px 20px; }
     .post-cta-wrap { padding: 0 20px 40px; }
     .post-back-wrap { padding: 0 20px 48px; }

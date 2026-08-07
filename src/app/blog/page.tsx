@@ -1,6 +1,8 @@
 import { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
+import { AdSense } from "@/components/AdSense";
+import { getAdSenseSlot } from "@/lib/adsense";
 import { getAllPosts, type Post } from "@/lib/contentful";
 
 export const metadata: Metadata = {
@@ -51,6 +53,7 @@ function PostCard({ post, featured = false }: { post: Post; featured?: boolean }
 export default async function BlogIndex() {
   const posts = await getAllPosts();
   const [hero, ...rest] = posts;
+  const adSlot = getAdSenseSlot("blog");
 
   return (
     <>
@@ -85,6 +88,12 @@ export default async function BlogIndex() {
             </p>
           </div>
         </section>
+
+        {adSlot && (
+          <div className="blog-ad-wrap">
+            <AdSense slot={adSlot} className="blog-ad" />
+          </div>
+        )}
 
         <div className="blog-content">
           {posts.length === 0 ? (
@@ -207,6 +216,16 @@ const CSS = `
   .blog-hero-title em { color: var(--sage); font-style: normal; }
   .blog-hero-sub { font-size: 16px; color: var(--muted); line-height: 1.7; }
 
+  /* ── Ads ── */
+  .blog-ad-wrap {
+    max-width: 1100px; margin: 0 auto; padding: 0 48px;
+  }
+  .blog-ad {
+    min-height: 90px; margin: 0 auto;
+    overflow: hidden; border-radius: 10px;
+    border: 1px solid var(--bd); background: var(--bg2);
+  }
+
   /* ── Content ── */
   .blog-main { min-height: 100vh; }
   .blog-content { max-width: 1100px; margin: 0 auto; padding: 60px 48px 100px; }
@@ -277,6 +296,7 @@ const CSS = `
     .blog-header { padding: 0 20px; }
     .blog-nav a:not(.blog-nav-cta) { display: none; }
     .blog-hero { padding: 60px 20px 40px; }
+    .blog-ad-wrap { padding: 0 20px; }
     .blog-content { padding: 40px 20px 60px; }
     .post-card--featured { flex-direction: column; }
     .post-card--featured .post-card-img-wrap { width: 100%; min-height: 200px; }
