@@ -393,7 +393,7 @@ export default function LandingPage() {
             ) : (
               <iframe
                 className="lp-video-iframe"
-                src="https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1&rel=0&modestbranding=1"
+                src="https://www.youtube.com/embed/ygcwREFJX5I?autoplay=1&rel=0&modestbranding=1"
                 title="Tractar product demo"
                 allow="autoplay; fullscreen"
                 allowFullScreen
