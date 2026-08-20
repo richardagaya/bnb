@@ -24,9 +24,9 @@ type PageProps = {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
   const post = await getPostBySlug(slug);
-  if (!post) return { title: "Post not found — Tractar" };
+  if (!post) return { title: "Post not found — Tracktar" };
   return {
-    title:       `${post.seoTitle} — Tractar Blog`,
+    title:       `${post.seoTitle} — Tracktar Blog`,
     description: post.seoDescription,
     openGraph: {
       title:       post.seoTitle,
@@ -97,7 +97,7 @@ export default async function PostPage({ params }: PageProps) {
       <header className="blog-header">
         <div className="blog-header-inner">
           <Link href="/" className="blog-logo">
-            <img src="/logo.png" alt="Tractar" className="blog-logo-img" />
+            <img src="/logo.png" alt="Tracktar" className="blog-logo-img" />
           </Link>
           <nav className="blog-nav">
             <Link href="/blog">← All posts</Link>
@@ -162,7 +162,7 @@ export default async function PostPage({ params }: PageProps) {
             <div>
               <h3 className="post-cta-title">Track your rental like a business</h3>
               <p className="post-cta-sub">
-                Tractar gives you P&amp;L, booking tracking, expense management and
+                Tracktar gives you P&amp;L, booking tracking, expense management and
                 calendar sync — all in one place. Free to start.
               </p>
             </div>
@@ -179,14 +179,14 @@ export default async function PostPage({ params }: PageProps) {
       <footer className="blog-footer">
         <div className="blog-footer-inner">
           <Link href="/" className="blog-footer-brand">
-            <img src="/logo.png" alt="Tractar" className="blog-logo-img" />
+            <img src="/logo.png" alt="Tracktar" className="blog-logo-img" />
           </Link>
           <nav className="blog-footer-links">
             <Link href="/privacy-policy">Privacy</Link>
             <Link href="/terms-of-service">Terms</Link>
             <Link href="/contact">Contact</Link>
           </nav>
-          <p className="blog-footer-copy">© 2026 Tractar. All rights reserved.</p>
+          <p className="blog-footer-copy">© 2026 Tracktar. All rights reserved.</p>
         </div>
       </footer>
     </>

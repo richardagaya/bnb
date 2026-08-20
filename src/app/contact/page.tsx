@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Contact | Tractar",
-  description: "Get in touch with Tractar support, feedback, and general inquiries.",
+  title: "Contact | Tracktar",
+  description: "Get in touch with Tracktar support, feedback, and general inquiries.",
 };
 
 const SUPPORT_EMAIL = "support@tracktar.com";
@@ -16,7 +16,7 @@ export default function ContactPage() {
         <Link href="/" className="mb-10 inline-flex items-center">
           <img
             src="/logo.png"
-            alt="Tractar"
+            alt="Tracktar"
             className="h-16 w-auto brightness-[0.3] contrast-200 saturate-200"
           />
         </Link>
@@ -27,7 +27,7 @@ export default function ContactPage() {
           </p>
           <h1 className="mb-3 text-3xl font-semibold tracking-tight">Get in touch</h1>
           <p className="mb-8 text-sm leading-7 text-[#c8c5bd]">
-            Questions about Tractar, your account, or how we handle your data? We&apos;re here to
+            Questions about Tracktar, your account, or how we handle your data? We&apos;re here to
             help. Reach out by email or share product feedback through our form.
           </p>
 
@@ -35,7 +35,7 @@ export default function ContactPage() {
             <section>
               <h2 className="mb-2 text-xl font-semibold text-[#f7f4ec]">Email support</h2>
               <p className="mb-3">
-                For account help, billing questions, or anything else about Tractar, email us and
+                For account help, billing questions, or anything else about Tracktar, email us and
                 we&apos;ll get back to you as soon as we can.
               </p>
               <a

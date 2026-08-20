@@ -6,7 +6,7 @@ import { getAdSenseSlot } from "@/lib/adsense";
 import { getAllPosts, type Post } from "@/lib/contentful";
 
 export const metadata: Metadata = {
-  title:       "Blog — Tractar",
+  title:       "Blog — Tracktar",
   description: "Guides, tips and product updates for short-term rental hosts.",
 };
 
@@ -63,7 +63,7 @@ export default async function BlogIndex() {
       <header className="blog-header">
         <div className="blog-header-inner">
           <Link href="/" className="blog-logo">
-            <img src="/logo.png" alt="Tractar" className="blog-logo-img" />
+            <img src="/logo.png" alt="Tracktar" className="blog-logo-img" />
           </Link>
           <nav className="blog-nav">
             <Link href="/">Home</Link>
@@ -77,7 +77,7 @@ export default async function BlogIndex() {
         {/* Hero */}
         <section className="blog-hero">
           <div className="blog-hero-inner">
-            <span className="blog-tag">The Tractar Blog</span>
+            <span className="blog-tag">The Tracktar Blog</span>
             <h1 className="blog-hero-title">
               Insights for hosts who<br />
               <em>mean business.</em>
@@ -129,14 +129,14 @@ export default async function BlogIndex() {
       <footer className="blog-footer">
         <div className="blog-footer-inner">
           <Link href="/" className="blog-footer-brand">
-            <img src="/logo.png" alt="Tractar" className="blog-logo-img" />
+            <img src="/logo.png" alt="Tracktar" className="blog-logo-img" />
           </Link>
           <nav className="blog-footer-links">
             <Link href="/privacy-policy">Privacy</Link>
             <Link href="/terms-of-service">Terms</Link>
             <Link href="/contact">Contact</Link>
           </nav>
-          <p className="blog-footer-copy">© 2026 Tractar. All rights reserved.</p>
+          <p className="blog-footer-copy">© 2026 Tracktar. All rights reserved.</p>
         </div>
       </footer>
     </>

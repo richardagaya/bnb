@@ -1,5 +1,5 @@
 const VERIFIED_SEND_DOMAIN = "tracktar.com";
-const DEFAULT_FROM = `Tractar <support@${VERIFIED_SEND_DOMAIN}>`;
+const DEFAULT_FROM = `Tracktar <support@${VERIFIED_SEND_DOMAIN}>`;
 
 /** Wrong domains that have appeared in env typos — never valid for this project. */
 const WRONG_FROM_DOMAINS = ["tractar.app", "tracktar.app", "tractar.com"];
@@ -36,11 +36,11 @@ function normalizeFromHeader(raw: string): string {
   const email = normalizeEmailDomain(extractEmailAddress(trimmed));
 
   if (trimmed.includes("<")) {
-    const name = trimmed.slice(0, trimmed.indexOf("<")).trim() || "Tractar";
+    const name = trimmed.slice(0, trimmed.indexOf("<")).trim() || "Tracktar";
     return `${name} <${email}>`;
   }
 
-  return `Tractar <${email}>`;
+  return `Tracktar <${email}>`;
 }
 
 export function getAppUrl() {

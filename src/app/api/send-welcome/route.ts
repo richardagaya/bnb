@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
       from,
       to: email,
       ...(replyTo ? { replyTo } : {}),
-      subject: `Welcome to Tractar, ${firstName} 👋`,
+      subject: `Welcome to Tracktar, ${firstName} 👋`,
       html: buildWelcomeEmail(firstName, APP_URL),
     });
 
@@ -59,7 +59,7 @@ function buildWelcomeEmail(firstName: string, appUrl: string): string {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Welcome to Tractar</title>
+  <title>Welcome to Tracktar</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -85,7 +85,7 @@ function buildWelcomeEmail(firstName: string, appUrl: string): string {
                   <span style="font-size:18px; font-weight:800; color:#fff; line-height:40px;">T</span>
                 </td>
                 <td style="padding-left:12px; font-size:20px; font-weight:700; color:#e8e3d9; letter-spacing:-0.02em;">
-                  Tractar
+                  Tracktar
                 </td>
               </tr>
             </table>
@@ -106,7 +106,7 @@ function buildWelcomeEmail(firstName: string, appUrl: string): string {
             </h1>
             <p style="font-size:15px; color:#8a91a8; line-height:1.65; margin-bottom:28px;">
               You've just unlocked a smarter way to manage your rental properties.
-              Here's a quick walkthrough to get the most out of Tractar in the next 5 minutes.
+              Here's a quick walkthrough to get the most out of Tracktar in the next 5 minutes.
             </p>
             <a href="${appUrl}/dashboard"
               style="display:inline-block; padding:14px 28px; background:#81b29a;
@@ -207,8 +207,8 @@ function buildWelcomeEmail(firstName: string, appUrl: string): string {
         <tr>
           <td style="text-align:center;">
             <p style="font-size:12px; color:#3a4060; line-height:1.6;">
-              You received this because you created a Tractar account.<br/>
-              <a href="${appUrl}" style="color:#4a5068; text-decoration:underline;">Tractar</a>
+              You received this because you created a Tracktar account.<br/>
+              <a href="${appUrl}" style="color:#4a5068; text-decoration:underline;">Tracktar</a>
               · Property management made simple.
             </p>
           </td>

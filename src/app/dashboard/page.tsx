@@ -166,7 +166,7 @@ export default function DashboardPage() {
               ☰
             </button>
             <div className="no-listing-content">
-              <h2>Welcome to Tractar</h2>
+              <h2>Welcome to Tracktar</h2>
               <p>
                 Add your first property from the sidebar to start tracking
                 revenue, expenses, and profitability.

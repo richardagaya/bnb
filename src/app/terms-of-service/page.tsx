@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Terms of Service | Tractar",
-  description: "Terms of Service for Tractar.",
+  title: "Terms of Service | Tracktar",
+  description: "Terms of Service for Tracktar.",
 };
 
 export default function TermsOfServicePage() {
@@ -13,7 +13,7 @@ export default function TermsOfServicePage() {
         <Link href="/" className="mb-10 inline-flex items-center">
           <img
             src="/logo.png"
-            alt="Tractar"
+            alt="Tracktar"
             className="h-16 w-auto brightness-[0.3] contrast-200 saturate-200"
           />
         </Link>
@@ -23,15 +23,15 @@ export default function TermsOfServicePage() {
             Terms of Service
           </p>
           <h1 className="mb-3 text-3xl font-semibold tracking-tight">
-            Tractar Terms of Service
+            Tracktar Terms of Service
           </h1>
           <p className="mb-8 text-sm text-[#9da0ad]">Last updated: April 29, 2026</p>
 
           <div className="space-y-7 text-sm leading-7 text-[#c8c5bd]">
             <section>
-              <h2 className="mb-2 text-xl font-semibold text-[#f7f4ec]">Using Tractar</h2>
+              <h2 className="mb-2 text-xl font-semibold text-[#f7f4ec]">Using Tracktar</h2>
               <p>
-                Tractar provides tools for short-term rental hosts to track properties,
+                Tracktar provides tools for short-term rental hosts to track properties,
                 bookings, expenses, referrals, and profitability. You are responsible for the
                 accuracy of the information you enter and for how you use the service.
               </p>
@@ -48,7 +48,7 @@ export default function TermsOfServicePage() {
             <section>
               <h2 className="mb-2 text-xl font-semibold text-[#f7f4ec]">Acceptable Use</h2>
               <p>
-                You may not misuse Tractar, attempt to access data that is not yours, interfere
+                You may not misuse Tracktar, attempt to access data that is not yours, interfere
                 with the service, reverse engineer the product, or use it for unlawful activity.
               </p>
             </section>
@@ -56,7 +56,7 @@ export default function TermsOfServicePage() {
             <section>
               <h2 className="mb-2 text-xl font-semibold text-[#f7f4ec]">Your Data</h2>
               <p>
-                You retain ownership of the rental and business data you add to Tractar. You
+                You retain ownership of the rental and business data you add to Tracktar. You
                 grant us permission to process that data only as needed to operate, maintain,
                 and improve the service.
               </p>
@@ -65,7 +65,7 @@ export default function TermsOfServicePage() {
             <section>
               <h2 className="mb-2 text-xl font-semibold text-[#f7f4ec]">No Financial Advice</h2>
               <p>
-                Tractar helps organize and display rental business information, but it does not
+                Tracktar helps organize and display rental business information, but it does not
                 provide legal, tax, accounting, or financial advice. You should consult a
                 qualified professional before making business or compliance decisions.
               </p>
@@ -74,7 +74,7 @@ export default function TermsOfServicePage() {
             <section>
               <h2 className="mb-2 text-xl font-semibold text-[#f7f4ec]">Changes and Availability</h2>
               <p>
-                We may update, modify, or discontinue parts of Tractar over time. We aim to keep
+                We may update, modify, or discontinue parts of Tracktar over time. We aim to keep
                 the service reliable, but we do not guarantee uninterrupted availability.
               </p>
             </section>
@@ -82,7 +82,7 @@ export default function TermsOfServicePage() {
             <section>
               <h2 className="mb-2 text-xl font-semibold text-[#f7f4ec]">Contact</h2>
               <p>
-                If you have questions about these Terms, contact Tractar support through our{" "}
+                If you have questions about these Terms, contact Tracktar support through our{" "}
                 <Link href="/contact" className="text-[#81B29A] hover:underline">
                   contact page
                 </Link>

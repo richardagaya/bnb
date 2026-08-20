@@ -69,7 +69,7 @@ export default function ListingsSidebar({
     <aside className={`listings-sidebar${isOpen ? " sidebar-open" : ""}`}>
       <div className="sidebar-header">
         <div className="sidebar-logo">
-          <img src="/logo.png" alt="Tractar" className="sidebar-logo-img" />
+          <img src="/logo.png" alt="Tracktar" className="sidebar-logo-img" />
         </div>
         <p className="sidebar-subtitle">Your Properties</p>
         {/* Close button — mobile only */}

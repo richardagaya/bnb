@@ -280,7 +280,7 @@ const DEFAULT_CHECKLIST = [
   { id: 10, category: "Between stays", text: "Linen changed and restocked", done: false },
   { id: 11, category: "Between stays", text: "Consumables restocked (soap, coffee, etc.)", done: false },
   { id: 12, category: "Between stays", text: "Appliances checked", done: false },
-  { id: 13, category: "Monthly", text: "P&L reviewed on Tractar", done: false },
+  { id: 13, category: "Monthly", text: "P&L reviewed on Tracktar", done: false },
   { id: 14, category: "Monthly", text: "Expenses logged", done: false },
   { id: 15, category: "Monthly", text: "Calendar synced and updated", done: false },
 ];
@@ -440,7 +440,7 @@ export default function ToolsPage() {
       <header className="tools-nav-header">
         <div className="tools-nav-inner">
           <Link href="/" className="tools-logo">
-            <img src="/logo.png" alt="Tractar" className="tools-logo-img" />
+            <img src="/logo.png" alt="Tracktar" className="tools-logo-img" />
           </Link>
           <nav className="tools-nav">
             <Link href="/">Home</Link>
@@ -501,14 +501,14 @@ export default function ToolsPage() {
       <footer className="tools-footer">
         <div className="tools-footer-inner">
           <Link href="/" className="tools-footer-brand">
-            <img src="/logo.png" alt="Tractar" className="tools-logo-img" />
+            <img src="/logo.png" alt="Tracktar" className="tools-logo-img" />
           </Link>
           <nav className="tools-footer-links">
             <Link href="/privacy-policy">Privacy</Link>
             <Link href="/terms-of-service">Terms</Link>
             <Link href="/contact">Contact</Link>
           </nav>
-          <p className="tools-footer-copy">© 2026 Tractar. All rights reserved.</p>
+          <p className="tools-footer-copy">© 2026 Tracktar. All rights reserved.</p>
         </div>
       </footer>
     </>

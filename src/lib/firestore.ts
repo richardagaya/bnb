@@ -1,5 +1,5 @@
 /**
- * Firestore CRUD helpers for Tractar.
+ * Firestore CRUD helpers for Tracktar.
  *
  * Data model:
  *   users/{uid}                          – user profile

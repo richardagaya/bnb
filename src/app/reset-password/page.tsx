@@ -93,7 +93,7 @@ function ResetPasswordForm() {
     <div className="rp-shell">
       <div className="rp-card">
         <Link href="/" className="rp-brand">
-          <img src="/logo.png" alt="Tractar" className="rp-brand-logo" />
+          <img src="/logo.png" alt="Tracktar" className="rp-brand-logo" />
         </Link>
 
         {/* ── Verifying ── */}

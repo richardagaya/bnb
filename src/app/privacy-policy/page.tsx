@@ -4,8 +4,8 @@ import path from "path";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy | Tractar",
-  description: "Privacy Policy for Tractar.",
+  title: "Privacy Policy | Tracktar",
+  description: "Privacy Policy for Tracktar.",
 };
 
 export default function PrivacyPolicyPage() {
@@ -21,7 +21,7 @@ export default function PrivacyPolicyPage() {
       <header className="pp-header">
         <div className="pp-header-inner">
           <Link href="/" className="pp-logo">
-            <img src="/logo.png" alt="Tractar" className="pp-logo-img" />
+            <img src="/logo.png" alt="Tracktar" className="pp-logo-img" />
           </Link>
           <nav className="pp-nav">
             <Link href="/">Home</Link>
@@ -44,14 +44,14 @@ export default function PrivacyPolicyPage() {
       <footer className="pp-footer">
         <div className="pp-footer-inner">
           <Link href="/" className="pp-footer-brand">
-            <img src="/logo.png" alt="Tractar" className="pp-logo-img" />
+            <img src="/logo.png" alt="Tracktar" className="pp-logo-img" />
           </Link>
           <nav className="pp-footer-links">
             <Link href="/privacy-policy">Privacy</Link>
             <Link href="/terms-of-service">Terms</Link>
             <Link href="/contact">Contact</Link>
           </nav>
-          <p className="pp-footer-copy">© 2026 Tractar. All rights reserved.</p>
+          <p className="pp-footer-copy">© 2026 Tracktar. All rights reserved.</p>
         </div>
       </footer>
     </>

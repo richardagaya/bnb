@@ -102,7 +102,7 @@ function LoginForm() {
   const sub =
     mode === "sign-up" ? "Start tracking your properties for free." :
     mode === "reset"   ? "We'll send a reset link to your email." :
-                         "Sign in to continue to Tractar.";
+                         "Sign in to continue to Tracktar.";
 
   const submitLabel =
     mode === "sign-up" ? "Create account" :
@@ -115,7 +115,7 @@ function LoginForm() {
       <div className="auth-left">
         <div className="auth-left-inner">
           <Link href="/" className="auth-brand">
-            <img src="/logo.png" alt="Tractar" className="auth-brand-logo" />
+            <img src="/logo.png" alt="Tracktar" className="auth-brand-logo" />
           </Link>
 
           <div className="auth-left-body">
@@ -147,7 +147,7 @@ function LoginForm() {
             </ul>
           </div>
 
-          <p className="auth-left-footer">© 2026 Tractar</p>
+          <p className="auth-left-footer">© 2026 Tracktar</p>
         </div>
       </div>
 
@@ -160,7 +160,7 @@ function LoginForm() {
 
           {/* Mobile-only brand */}
           <Link href="/" className="auth-brand auth-brand-mobile">
-            <img src="/logo.png" alt="Tractar" className="auth-brand-logo" />
+            <img src="/logo.png" alt="Tracktar" className="auth-brand-logo" />
           </Link>
 
           {/* Mode tabs (sign-in / sign-up only) */}

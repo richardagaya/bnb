@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
       const { error } = await resend.emails.send({
         ...sendOpts,
         to: trimmed,
-        subject: "How to sign in to your Tractar account",
+        subject: "How to sign in to your Tracktar account",
         html: buildGoogleSignInReminderEmail(appUrl),
       });
 
@@ -101,7 +101,7 @@ export async function POST(req: NextRequest) {
     const { error } = await resend.emails.send({
       ...sendOpts,
       to: trimmed,
-      subject: "Reset your Tractar password",
+      subject: "Reset your Tracktar password",
       html: buildPasswordResetEmail(resetLink, appUrl),
     });
 

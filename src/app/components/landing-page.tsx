@@ -348,7 +348,7 @@ export default function LandingPage() {
                     </div>
                     <div className="lp-vthumb-body">
                       <div className="lp-vthumb-sidebar">
-                        <div className="lp-vthumb-brand">⌂ Tractar</div>
+                        <div className="lp-vthumb-brand">⌂ Tracktar</div>
                         <div className="lp-vthumb-prop lp-vthumb-prop-active">Downtown Loft</div>
                         <div className="lp-vthumb-prop">Beach Villa</div>
                         <div className="lp-vthumb-prop">Studio 4B</div>
@@ -394,7 +394,7 @@ export default function LandingPage() {
               <iframe
                 className="lp-video-iframe"
                 src="https://www.youtube.com/embed/ygcwREFJX5I?autoplay=1&rel=0&modestbranding=1"
-                title="Tractar product demo"
+                title="Tracktar product demo"
                 allow="autoplay; fullscreen"
                 allowFullScreen
               />
@@ -532,7 +532,7 @@ export default function LandingPage() {
             </h2>
             <p className="lp-ical-body">
               Copy the iCal export URL from Airbnb, Booking.com, or VRBO.
-              Tractar fetches it on the server, parses every reservation,
+              Tracktar fetches it on the server, parses every reservation,
               and drops them straight into your calendar and monthly P&amp;L —
               no manual entry, no duplicates, no CORS headaches.
             </p>
@@ -660,7 +660,7 @@ export default function LandingPage() {
       <footer className="lp-footer">
         <div className="lp-footer-inner">
           <div className="lp-footer-brand">
-            <img src="/logo.png" alt="Tractar" className="lp-logo-img lp-logo-img--footer" />
+            <img src="/logo.png" alt="Tracktar" className="lp-logo-img lp-logo-img--footer" />
           </div>
           <nav className="lp-footer-links">
             <a href="/privacy-policy">Privacy</a>
