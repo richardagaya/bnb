@@ -510,8 +510,6 @@ export default function ListingDashboard({
         {activeTab === "overview" && (() => {
           const now            = new Date();
           const todayKey       = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-          const hour           = now.getHours();
-          const greeting       = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
           const isCurrentMonth = overviewMonth === todayKey;
 
           // Parse overviewMonth into a Date for navigation & labelling
@@ -543,29 +541,6 @@ export default function ListingDashboard({
 
           return (
             <div className="ov2-root">
-              {/* ── Greeting banner ── */}
-              <div className="ov2-greeting" style={{ borderColor: `${listing.color}33`, background: `${listing.color}08` }}>
-                <div className="ov2-greeting-left">
-                  {isCurrentMonth && <p className="ov2-hello">{greeting}</p>}
-                  <h2 className="ov2-tagline">
-                    Let&apos;s see your books<span className="ov2-tagline-month"> — {monthName}</span>
-                  </h2>
-                  <p className="ov2-tagline-sub">
-                    {hasBookings
-                      ? [
-                          monthBookings.length > 0 && `${monthBookings.length} booking${monthBookings.length !== 1 ? "s" : ""}`,
-                          monthReferrals.length > 0 && `${monthReferrals.length} referral${monthReferrals.length !== 1 ? "s" : ""}`,
-                        ].filter(Boolean).join(" · ") + ` · ${formatCurrency(actualRevenue)} total revenue`
-                      : isCurrentMonth
-                        ? "No bookings logged yet this month — figures below are projections."
-                        : "No bookings recorded for this month."}
-                  </p>
-                </div>
-                <div className="ov2-greeting-badge" style={{ color: listing.color, borderColor: `${listing.color}44`, background: `${listing.color}12` }}>
-                  {listing.type}
-                </div>
-              </div>
-
               <MonthNav
                 month={overviewMonth}
                 onChange={setOverviewMonth}
@@ -631,38 +606,6 @@ export default function ListingDashboard({
                     </div>
                   )}
                 </div>
-              </div>
-
-              {/* ── Quick-action row ── */}
-              <div className="ov2-cta-row">
-                <button className="ov2-cta" onClick={() => setActiveTab("bookings")}>
-                  <div>
-                    <div className="cta-title">Log a Booking</div>
-                    <div className="cta-desc">Add guest, dates, payment status</div>
-                  </div>
-                  <span className="cta-arrow">→</span>
-                </button>
-                <button className="ov2-cta" onClick={() => setActiveTab("referrals")}>
-                  <div>
-                    <div className="cta-title">Log a Referral</div>
-                    <div className="cta-desc">Track commissions from referring guests</div>
-                  </div>
-                  <span className="cta-arrow">→</span>
-                </button>
-                <button className="ov2-cta" onClick={() => setActiveTab("expenses")}>
-                  <div>
-                    <div className="cta-title">Log an Expense</div>
-                    <div className="cta-desc">Track costs for {monthName}</div>
-                  </div>
-                  <span className="cta-arrow">→</span>
-                </button>
-                <button className="ov2-cta" onClick={() => setActiveTab("summary")}>
-                  <div>
-                    <div className="cta-title">View Full P&amp;L History</div>
-                    <div className="cta-desc">Every month saved automatically</div>
-                  </div>
-                  <span className="cta-arrow">→</span>
-                </button>
               </div>
             </div>
           );
@@ -1009,7 +952,6 @@ export default function ListingDashboard({
             onAddSource={addCalendarSource}
             onRemoveSource={removeCalendarSource}
             onSync={syncCalendarSource}
-            onImportBookings={importBookingsFromIcal}
             bookings={bookings}
           />
         )}
