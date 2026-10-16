@@ -16,9 +16,20 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Tracktar — Short-term rental intelligence",
+  title: "Tracktar — AI-Powered Airbnb Sales Tracking & Insights",
   description:
-    "Track revenue, expenses, and profitability for every property you host.",
+    "AI-powered Airbnb sales tracking. Monitor revenue, expenses, profits, and losses by listing, with sales insights that show which properties make or lose money.",
+  openGraph: {
+    title: "Tracktar — AI-Powered Airbnb Sales Tracking & Insights",
+    description:
+      "AI-powered Airbnb sales tracking. Monitor revenue, expenses, profits, and losses by listing, with sales insights that show which properties make or lose money.",
+  },
+  twitter: {
+    card: "summary",
+    title: "Tracktar — AI-Powered Airbnb Sales Tracking & Insights",
+    description:
+      "AI-powered Airbnb sales tracking. Monitor revenue, expenses, profits, and losses by listing, with sales insights that show which properties make or lose money.",
+  },
   icons: {
     icon: "/favicon.ico",
   },
