@@ -31,6 +31,8 @@ interface BookingTrackerProps {
   defaultDate?: string;
   /** Account currency code (ISO 4217). */
   currency?: string;
+  /** Every booking on this listing. Used to block dates that are already taken. */
+  scheduleBookings?: Booking[];
 }
 
 const SOURCES = [
@@ -71,17 +73,81 @@ function nightsBetween(from: string, to: string) {
   return Math.max(1, Math.round(ms / 86400000));
 }
 
+function toDateKey(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function addDays(key: string, days: number) {
+  const d = new Date(key + "T00:00:00");
+  d.setDate(d.getDate() + days);
+  return toDateKey(d);
+}
+
+/** Nights a guest occupies: check-in inclusive, check-out exclusive. */
+function stayNights(checkIn: string, checkOut: string): string[] {
+  if (!checkIn || !checkOut || checkOut <= checkIn) return checkIn ? [checkIn] : [];
+  const nights: string[] = [];
+  const cursor = new Date(checkIn + "T00:00:00");
+  const end = new Date(checkOut + "T00:00:00");
+  while (cursor < end) {
+    nights.push(toDateKey(cursor));
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return nights;
+}
+
+function occupiedNights(list: Booking[]): Set<string> {
+  const taken = new Set<string>();
+  for (const booking of list) {
+    if (booking.status === "cancelled" || !booking.checkIn) continue;
+    for (const night of stayNights(booking.checkIn, booking.checkOut)) taken.add(night);
+  }
+  return taken;
+}
+
+function stayOverlaps(checkIn: string, checkOut: string, taken: Set<string>) {
+  return stayNights(checkIn, checkOut).some((night) => taken.has(night));
+}
+
+/** Keep checkout on or before the next booked night so the new stay does not overlap. */
+function clampCheckout(checkIn: string, preferred: string, taken: Set<string>) {
+  if (!checkIn) return preferred;
+  const fallback = addDays(checkIn, 1);
+  if (taken.has(checkIn)) return fallback;
+
+  let maxOut = fallback;
+  const cursor = new Date(checkIn + "T00:00:00");
+  for (let i = 0; i < 366; i++) {
+    const night = toDateKey(cursor);
+    if (taken.has(night)) break;
+    cursor.setDate(cursor.getDate() + 1);
+    maxOut = toDateKey(cursor);
+  }
+  if (preferred > checkIn && preferred <= maxOut) return preferred;
+  return maxOut;
+}
+
+function firstFreeStay(seed: string | undefined, taken: Set<string>) {
+  const start = new Date((seed || new Date().toISOString().split("T")[0]) + "T00:00:00");
+  for (let i = 0; i < 366; i++) {
+    const checkIn = toDateKey(start);
+    if (!taken.has(checkIn)) {
+      return { checkIn, checkOut: clampCheckout(checkIn, addDays(checkIn, 1), taken) };
+    }
+    start.setDate(start.getDate() + 1);
+  }
+  const checkIn = seed || new Date().toISOString().split("T")[0];
+  return { checkIn, checkOut: addDays(checkIn, 1) };
+}
+
 function fmtDate(d: string) {
   return new Date(d + "T00:00:00").toLocaleDateString("en-US", {
     month: "short", day: "numeric", year: "numeric",
   });
 }
 
-function buildEmptyForm(seed?: string): Omit<Booking, "id" | "createdAt"> {
-  const checkIn = seed ?? new Date().toISOString().split("T")[0];
-  const next = new Date(checkIn + "T00:00:00");
-  next.setDate(next.getDate() + 1);
-  const checkOut = next.toISOString().split("T")[0];
+function buildEmptyForm(seed?: string, taken: Set<string> = new Set()): Omit<Booking, "id" | "createdAt"> {
+  const { checkIn, checkOut } = firstFreeStay(seed, taken);
   return {
     guestName: "",
     checkIn,
@@ -105,6 +171,7 @@ export default function BookingTracker({
   accentColor = "#81B29A",
   defaultDate,
   currency,
+  scheduleBookings,
 }: BookingTrackerProps) {
   const fmtCurrency = (n: number) => fmtMoney(n, currency);
   const symbol = currencySymbol(currency);
@@ -123,7 +190,9 @@ export default function BookingTracker({
   useDismissOnClickOutside(formRef, showForm, closeForm);
   useDismissOnEscape(deleteConfirm !== null, closeDeleteConfirm);
 
-  const [form, setForm] = useState<Omit<Booking, "id" | "createdAt">>(() => buildEmptyForm(defaultDate));
+  const takenNights = occupiedNights(scheduleBookings ?? bookings);
+  const [form, setForm] = useState<Omit<Booking, "id" | "createdAt">>(() => buildEmptyForm(defaultDate, takenNights));
+  const datesConflict = stayOverlaps(form.checkIn, form.checkOut, takenNights);
 
   const updateForm = (patch: Partial<typeof form>) => {
     setForm((prev) => {
@@ -146,14 +215,14 @@ export default function BookingTracker({
   };
 
   const handleSubmit = () => {
-    if (!form.guestName.trim() || form.chargeAmount <= 0) return;
+    if (!form.guestName.trim() || form.chargeAmount <= 0 || datesConflict) return;
     onAddBooking({ ...form, nights: nightsBetween(form.checkIn, form.checkOut) });
-    setForm(buildEmptyForm(defaultDate));
+    setForm(buildEmptyForm(defaultDate, takenNights));
     setShowForm(false);
   };
 
   const openForm = () => {
-    setForm(buildEmptyForm(defaultDate));
+    setForm(buildEmptyForm(defaultDate, takenNights));
     setShowForm(true);
     setExpandedId(null);
   };
@@ -244,19 +313,25 @@ export default function BookingTracker({
               <label className="bk-label">Check-in</label>
               <DatePicker
                 value={form.checkIn}
-                max={form.checkOut || undefined}
+                max={form.checkOut ? addDays(form.checkOut, -1) : undefined}
                 rangeEnd={form.checkOut}
                 placeholder="Select check-in"
-                onChange={(v) => updateForm({ checkIn: v })}
+                isDateBlocked={(day) => takenNights.has(day)}
+                onChange={(v) => updateForm({ checkIn: v, checkOut: clampCheckout(v, form.checkOut, takenNights) })}
               />
             </div>
             <div className="bk-fg">
               <label className="bk-label">Check-out</label>
               <DatePicker
                 value={form.checkOut}
-                min={form.checkIn || undefined}
+                min={form.checkIn ? addDays(form.checkIn, 1) : undefined}
                 rangeEnd={form.checkIn}
                 placeholder="Select check-out"
+                isDateBlocked={(day) =>
+                  takenNights.has(day) &&
+                  (!form.checkIn || day <= form.checkIn || stayOverlaps(form.checkIn, day, takenNights))
+                }
+                isDateDisabled={(day) => !!form.checkIn && day > form.checkIn && stayOverlaps(form.checkIn, day, takenNights)}
                 onChange={(v) => updateForm({ checkOut: v })}
               />
             </div>
@@ -266,6 +341,9 @@ export default function BookingTracker({
               <div className="bk-nights-badge">
                 {nightsBetween(form.checkIn, form.checkOut)} night{nightsBetween(form.checkIn, form.checkOut) !== 1 ? "s" : ""}
               </div>
+              {datesConflict && (
+                <p className="bk-date-clash">Those dates are already booked. Pick an open check-in.</p>
+              )}
             </div>
 
             {/* Source */}
@@ -391,7 +469,7 @@ export default function BookingTracker({
               className="bk-btn-save"
               style={{ background: accentColor }}
               onClick={handleSubmit}
-              disabled={!form.guestName.trim() || form.chargeAmount <= 0}
+              disabled={!form.guestName.trim() || form.chargeAmount <= 0 || datesConflict}
             >
               Save Booking
             </button>
@@ -727,6 +805,11 @@ export default function BookingTracker({
           font-size: 13px;
           color: #c8c3b8;
           width: fit-content;
+        }
+        .bk-date-clash {
+          margin: 8px 0 0;
+          font-size: 12px;
+          color: #e07a5f;
         }
 
         .bk-source-grid { display: flex; flex-wrap: wrap; gap: 7px; }

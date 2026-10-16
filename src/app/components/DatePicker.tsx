@@ -16,6 +16,10 @@ interface DatePickerProps {
   placeholder?: string;
   /** Second selected date — highlights range between value and rangeEnd */
   rangeEnd?: string;
+  /** Return true to grey out a date and block selection (already booked). */
+  isDateBlocked?: (dateKey: string) => boolean;
+  /** Return true to block selection without the booked style (for example a checkout that would cross a stay). */
+  isDateDisabled?: (dateKey: string) => boolean;
 }
 
 function toKey(d: Date) {
@@ -35,6 +39,8 @@ export default function DatePicker({
   max,
   placeholder = "Select date",
   rangeEnd,
+  isDateBlocked,
+  isDateDisabled,
 }: DatePickerProps) {
   const today    = new Date();
   const todayKey = toKey(today);
@@ -100,17 +106,23 @@ export default function DatePicker({
     const key = `${view.year}-${String(view.month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
     if (min && key < min) return;
     if (max && key > max) return;
+    if (isDateBlocked?.(key) || isDateDisabled?.(key)) return;
     onChange(key);
     setOpen(false);
   };
 
   const selectToday = () => {
     if ((min && todayKey < min) || (max && todayKey > max)) return;
+    if (isDateBlocked?.(todayKey) || isDateDisabled?.(todayKey)) return;
     onChange(todayKey);
     setOpen(false);
   };
 
-  const canGoToday = (!min || todayKey >= min) && (!max || todayKey <= max);
+  const canGoToday =
+    (!min || todayKey >= min) &&
+    (!max || todayKey <= max) &&
+    !isDateBlocked?.(todayKey) &&
+    !isDateDisabled?.(todayKey);
 
   const rangeMin = value && rangeEnd ? (value < rangeEnd ? value : rangeEnd) : null;
   const rangeMax = value && rangeEnd ? (value < rangeEnd ? rangeEnd : value) : null;
@@ -160,9 +172,10 @@ export default function DatePicker({
                 const key      = `${view.year}-${String(view.month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
                 const isSel    = key === value;
                 const isT      = key === todayKey && !isSel;
-                const disabled = (!!min && key < min) || (!!max && key > max);
-                const inRange  = !!rangeMin && !!rangeMax && key > rangeMin && key < rangeMax;
-                const isRangeEnd = key === rangeMax && key !== value;
+                const booked   = !!isDateBlocked?.(key);
+                const disabled = booked || !!isDateDisabled?.(key) || (!!min && key < min) || (!!max && key > max);
+                const inRange  = !booked && !!rangeMin && !!rangeMax && key > rangeMin && key < rangeMax;
+                const isRangeEnd = !booked && key === rangeMax && key !== value;
                 return (
                   <button
                     key={key}
@@ -170,19 +183,32 @@ export default function DatePicker({
                     className={[
                       "dp-day",
                       isSel      ? "dp-sel"      : "",
-                      isT        ? "dp-today"    : "",
-                      disabled   ? "dp-disabled" : "",
+                      isT && !booked ? "dp-today" : "",
+                      booked     ? "dp-booked"   : "",
+                      disabled && !booked ? "dp-disabled" : "",
                       inRange    ? "dp-in-range" : "",
                       isRangeEnd ? "dp-range-end": "",
                     ].join(" ")}
                     onClick={() => !disabled && selectDay(day)}
                     disabled={disabled}
+                    aria-label={booked ? `${day} already booked` : undefined}
                   >
                     {day}
                   </button>
                 );
               })}
             </div>
+
+            {isDateBlocked && cells.some((day) => {
+              if (day === null) return false;
+              const key = `${view.year}-${String(view.month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+              return isDateBlocked(key);
+            }) && (
+              <div className="dp-booked-legend">
+                <span className="dp-booked-swatch" />
+                Booked dates can’t be selected
+              </div>
+            )}
 
             {/* Footer */}
             <div className="dp-footer">
@@ -287,10 +313,26 @@ export default function DatePicker({
           cursor: pointer; font-family: inherit;
           transition: background 0.1s, color 0.1s;
         }
-        .dp-day:not(.dp-disabled):hover {
+        .dp-day:not(.dp-disabled):not(.dp-booked):hover {
           background: #2a3050; color: #e8e3d9;
         }
         .dp-disabled { opacity: 0.28; cursor: not-allowed; }
+        .dp-booked {
+          background: #2a2f3d;
+          color: #6d7386;
+          text-decoration: line-through;
+          cursor: not-allowed;
+        }
+        .dp-booked-legend {
+          display: flex; align-items: center; justify-content: center; gap: 8px;
+          padding: 2px 12px 8px;
+          font-size: 11px; color: #6d7386;
+        }
+        .dp-booked-swatch {
+          width: 12px; height: 12px; border-radius: 3px;
+          background: #2a2f3d;
+          box-shadow: inset 0 0 0 1px #6d7386;
+        }
         .dp-today {
           color: #81b29a; font-weight: 700;
           box-shadow: inset 0 0 0 1.5px #81b29a77;

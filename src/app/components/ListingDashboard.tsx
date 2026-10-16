@@ -7,6 +7,37 @@ import ExpenseTracker, { Expense } from "./ExpenseTracker";
 import BookingTracker, { Booking } from "./BookingTracker";
 import ReferralTracker, { Referral } from "./ReferralTracker";
 import MonthNav from "./MonthNav";
+import MonthPieChart, { PieSlice } from "./MonthPieChart";
+
+const PIE_COST_COLORS = ["#e07a5f", "#f2cc8f", "#6c7ab8", "#118ab2", "#c77dff", "#ef476f", "#8d99ae", "#ff9f1c", "#2ec4b6", "#b5838d"];
+
+function monthPieSlices(input: {
+  label: string;
+  profit: number;
+  rent: number;
+  utilities: number;
+  cleaner: number;
+  expenses: number;
+}): { slices: PieSlice[]; caption: string } {
+  const costs: { label: string; value: number }[] = [];
+  if (input.rent > 0) costs.push({ label: "Rent", value: input.rent });
+  if (input.utilities > 0) costs.push({ label: "Utilities", value: input.utilities });
+  if (input.cleaner > 0) costs.push({ label: "Cleaner", value: input.cleaner });
+  if (input.expenses > 0) costs.push({ label: "Expenses", value: input.expenses });
+
+  const slices: PieSlice[] = [];
+  if (input.profit > 0) {
+    slices.push({ label: "Profit", value: input.profit, color: "#81b29a" });
+  }
+  costs.forEach((cost, index) => {
+    slices.push({ ...cost, color: PIE_COST_COLORS[index % PIE_COST_COLORS.length] });
+  });
+
+  const caption = input.profit > 0
+    ? `How ${input.label} revenue was split`
+    : `Where ${input.label} costs went`;
+  return { slices, caption };
+}
 import { Listing } from "./ListingsSidebar";
 import { useNotifications } from "@/contexts/NotificationContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -135,6 +166,7 @@ export default function ListingDashboard({
     const k = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
     return new Set([k]);
   });
+  const [summaryChartMonths, setSummaryChartMonths] = useState<Set<string>>(new Set());
 
   // ── Per-listing persisted state ──
   // Initialised from localStorage for an instant render; overwritten by Firestore once loaded.
@@ -745,7 +777,45 @@ export default function ListingDashboard({
                     {/* Expanded body */}
                     {isExpanded(month.key) && (
                       <div className="ms-card-body">
+                        <div className="ms-view-toggle" role="group" aria-label={`${month.label} view`}>
+                          <button
+                            type="button"
+                            className={`ms-view-btn ${summaryChartMonths.has(month.key) ? "" : "active"}`}
+                            onClick={() => setSummaryChartMonths((prev) => {
+                              const next = new Set(prev);
+                              next.delete(month.key);
+                              return next;
+                            })}
+                          >
+                            Details
+                          </button>
+                          <button
+                            type="button"
+                            className={`ms-view-btn ${summaryChartMonths.has(month.key) ? "active" : ""}`}
+                            onClick={() => setSummaryChartMonths((prev) => {
+                              const next = new Set(prev);
+                              next.add(month.key);
+                              return next;
+                            })}
+                          >
+                            Pie chart
+                          </button>
+                        </div>
 
+                        {summaryChartMonths.has(month.key) ? (
+                          <MonthPieChart
+                            {...monthPieSlices({
+                              label: month.label,
+                              profit: month.profit,
+                              rent: financialData.monthlyRent,
+                              utilities: financialData.monthlyUtilities,
+                              cleaner: financialData.monthlyCleaner,
+                              expenses: month.expensesTotal,
+                            })}
+                            format={formatCurrency}
+                          />
+                        ) : (
+                        <>
                         {/* Revenue */}
                         <p className="ms-sec-label">Revenue</p>
                         {(month.bookings.length > 0 || month.mReferrals.length > 0) ? (
@@ -875,6 +945,8 @@ export default function ListingDashboard({
                             Profit margin: {((month.profit / month.revenue) * 100).toFixed(1)}%
                           </p>
                         )}
+                        </>
+                        )}
                       </div>
                     )}
                   </div>
@@ -905,6 +977,7 @@ export default function ListingDashboard({
                 accentColor={listing.color}
                 defaultDate={seedDateForMonth(bookingsMonth)}
                 currency={currency}
+                scheduleBookings={bookings}
               />
             </div>
           );
@@ -1916,6 +1989,30 @@ export default function ListingDashboard({
         .ms-card-body {
           padding: 0 20px 20px;
           border-top: 1px solid #1e2130;
+        }
+        .ms-view-toggle {
+          display: inline-flex;
+          margin-top: 14px;
+          background: #111520;
+          border: 1px solid #2a3050;
+          border-radius: 9px;
+          padding: 3px;
+          gap: 2px;
+        }
+        .ms-view-btn {
+          border: none;
+          background: transparent;
+          color: #8a9080;
+          font-family: inherit;
+          font-size: 12px;
+          font-weight: 600;
+          padding: 6px 12px;
+          border-radius: 7px;
+          cursor: pointer;
+        }
+        .ms-view-btn.active {
+          background: #81b29a;
+          color: #0f1117;
         }
         .ms-sec-label {
           font-size: 10px;
