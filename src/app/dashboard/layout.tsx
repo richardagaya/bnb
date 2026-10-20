@@ -14,7 +14,7 @@ export default function DashboardLayout({
 
   useEffect(() => {
     if (!isReady) return;
-    if (!user) router.replace("/login?redirect=/dashboard");
+    if (!user) router.replace("/");
   }, [user, isReady, router]);
 
   if (!isReady || !user) {

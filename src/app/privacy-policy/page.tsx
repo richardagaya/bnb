@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import fs from "fs";
 import path from "path";
 import Link from "next/link";
+import { NavAccount } from "@/app/components/NavAccount";
 
 export const metadata: Metadata = {
   title: "Privacy Policy | Tracktar",
@@ -27,9 +28,8 @@ export default function PrivacyPolicyPage() {
             <Link href="/">Home</Link>
             <Link href="/blog">Blog</Link>
             <Link href="/tools">Tools</Link>
-            <Link href="/login" className="pp-nav-cta">
-              Get started free →
-            </Link>
+            <Link href="/verify">Verify</Link>
+            <NavAccount />
           </nav>
         </div>
       </header>

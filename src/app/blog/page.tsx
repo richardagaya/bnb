@@ -4,6 +4,7 @@ import Image from "next/image";
 import { AdSense } from "@/components/AdSense";
 import { getAdSenseSlot } from "@/lib/adsense";
 import { getAllPosts, type Post } from "@/lib/contentful";
+import { NavAccount } from "@/app/components/NavAccount";
 
 export const metadata: Metadata = {
   title:       "Blog — Tracktar",
@@ -68,7 +69,8 @@ export default async function BlogIndex() {
           <nav className="blog-nav">
             <Link href="/">Home</Link>
             <Link href="/tools">Tools</Link>
-            <Link href="/login" className="blog-nav-cta">Get started free →</Link>
+            <Link href="/verify">Verify</Link>
+            <NavAccount />
           </nav>
         </div>
       </header>

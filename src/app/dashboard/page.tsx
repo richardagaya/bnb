@@ -13,7 +13,7 @@ import {
 } from "@/lib/firestore";
 
 export default function DashboardPage() {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
 
   const [listings, setListings] = useState<Listing[]>([]);
@@ -101,8 +101,7 @@ export default function DashboardPage() {
     }
   };
 
-  const handleSignOut = async () => {
-    await signOut();
+  const handleGoHome = () => {
     router.push("/");
   };
 
@@ -129,7 +128,7 @@ export default function DashboardPage() {
         onAddListing={addListing}
         userLabel={user.name}
         userEmail={user.email}
-        onSignOut={handleSignOut}
+        onSignOut={handleGoHome}
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
       />

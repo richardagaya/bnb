@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { saveMarketingEmail } from "@/lib/firestore";
+import { NavAccount } from "@/app/components/NavAccount";
 
 /* ── Scroll-reveal hook ─────────────────────────────────────────────────── */
 function useReveal() {
@@ -56,6 +57,7 @@ export default function LandingPage() {
     { href: "#demo", label: "Demo" },
     { href: "/tools", label: "Host hub" },
     { href: "/blog", label: "Our blog" },
+    { href: "/verify", label: "Verify" },
   ] as const;
 
   const closeMobileNav = () => setMobileNavOpen(false);
@@ -122,7 +124,7 @@ export default function LandingPage() {
             </li>
           ))}
         </ul>
-        <a href="/login" className="lp-nav-cta lp-nav-cta--desktop">Get started free →</a>
+        <NavAccount />
         <button
           type="button"
           className={`lp-nav-menu-btn${mobileNavOpen ? " lp-nav-menu-btn--open" : ""}`}
@@ -168,9 +170,7 @@ export default function LandingPage() {
                 </li>
               ))}
             </ul>
-            <a href="/login" className="lp-nav-cta lp-nav-cta--drawer" onClick={closeMobileNav}>
-              Get started free →
-            </a>
+            <NavAccount onClick={closeMobileNav} />
           </div>
         </>
       )}

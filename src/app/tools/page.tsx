@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { NavAccount } from "@/app/components/NavAccount";
 import { useState } from "react";
 
 /* ── Types ─────────────────────────────────────────────────────────────── */
@@ -445,7 +446,8 @@ export default function ToolsPage() {
           <nav className="tools-nav">
             <Link href="/">Home</Link>
             <Link href="/blog">Blog</Link>
-            <Link href="/login" className="tools-nav-cta">Get started free →</Link>
+            <Link href="/verify">Verify</Link>
+            <NavAccount />
           </nav>
         </div>
       </header>

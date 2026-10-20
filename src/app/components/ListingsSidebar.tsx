@@ -184,7 +184,7 @@ export default function ListingsSidebar({
             ) : null}
           </div>
           <button type="button" className="sidebar-sign-out" onClick={onSignOut}>
-            Sign out
+            Home
           </button>
         </div>
       ) : null}
@@ -502,8 +502,8 @@ export default function ListingsSidebar({
           transition: border-color 0.15s, color 0.15s;
         }
         .sidebar-sign-out:hover {
-          border-color: #e07a5f;
-          color: #e07a5f;
+          border-color: #81B29A;
+          color: #81B29A;
         }
       `}</style>
     </aside>

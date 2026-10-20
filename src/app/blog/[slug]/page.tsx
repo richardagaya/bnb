@@ -7,6 +7,7 @@ import { BLOCKS, INLINES, MARKS } from "@contentful/rich-text-types";
 import { AdSense } from "@/components/AdSense";
 import { getAdSenseSlot } from "@/lib/adsense";
 import { getPostBySlug, getAllPosts, type Post } from "@/lib/contentful";
+import { NavAccount } from "@/app/components/NavAccount";
 
 export const revalidate = 60;
 
@@ -101,7 +102,7 @@ export default async function PostPage({ params }: PageProps) {
           </Link>
           <nav className="blog-nav">
             <Link href="/blog">← All posts</Link>
-            <Link href="/login" className="blog-nav-cta">Get started free →</Link>
+            <NavAccount />
           </nav>
         </div>
       </header>
