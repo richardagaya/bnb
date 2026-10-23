@@ -80,25 +80,50 @@ export function digitsOnly(value: string) {
 /** Last 9 digits, so 0712… and +254712… are the same number. */
 export function matchKey(value: string) {
   const digits = digitsOnly(value);
+  if (digits.startsWith("0")) return matchKey(`254${digits.slice(1)}`);
   if (digits.length >= 9) return digits.slice(-9);
   return digits;
 }
 
+/** 07… and +254… are the same Kenyan number. A leading 0 becomes 254. */
+function comparableDigits(value: string) {
+  const digits = digitsOnly(value);
+  if (digits.startsWith("0")) return `254${digits.slice(1)}`;
+  return digits;
+}
+
+function nationalDigits(digits: string) {
+  if (digits.startsWith("254") && digits.length > 3) return digits.slice(3);
+  return digits;
+}
+
 export function numbersMatch(query: string, phone: string) {
-  const q = matchKey(query);
+  const rawQuery = digitsOnly(query);
+  const q = comparableDigits(query);
   if (!q) return true;
-  const p = matchKey(phone);
-  if (q.length >= 7) return p === q || p.endsWith(q) || q.endsWith(p);
-  return p.includes(q);
+  const p = comparableDigits(phone);
+  if (p.startsWith(q)) return true;
+  const qn = nationalDigits(q);
+  const pn = nationalDigits(p);
+  if (qn && pn.startsWith(qn)) return true;
+  // A full 07… number and +254… share the same last 9 digits.
+  // A different country code must not match on those digits alone.
+  if (qn.length >= 9 && pn.length >= 9 && qn.slice(-9) === pn.slice(-9)) {
+    const queryAssumesKenya = rawQuery.startsWith("0") || rawQuery.startsWith("254");
+    const phoneIsOtherCountry = !p.startsWith("254") && p.length > 10;
+    if (queryAssumesKenya && phoneIsOtherCountry) return false;
+    return true;
+  }
+  return false;
 }
 
 export function formatPhone(phone: string) {
-  const digits = digitsOnly(phone);
+  let digits = digitsOnly(phone);
+  if (digits.startsWith("0") && digits.length === 10) digits = `254${digits.slice(1)}`;
   if (digits.startsWith("254") && digits.length === 12) {
     return `+254 ${digits.slice(3, 6)} ${digits.slice(6, 9)} ${digits.slice(9)}`;
   }
-  if (digits.startsWith("0") && digits.length === 10) {
-    return `${digits.slice(0, 4)} ${digits.slice(4, 7)} ${digits.slice(7)}`;
-  }
-  return phone.trim();
+  const trimmed = phone.trim();
+  if (digits.length > 8 && !trimmed.startsWith("+")) return `+${digits}`;
+  return trimmed;
 }

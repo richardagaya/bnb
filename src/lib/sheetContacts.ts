@@ -101,10 +101,19 @@ export function contactsFromCsv(text: string): ReportedContact[] {
   return [...byId.values()];
 }
 
+const SHEET_REFRESH_MS = 30 * 60 * 1000;
+
+let cachedContacts: ReportedContact[] | null = null;
+let cachedAt = 0;
+
 export async function loadSheetContacts() {
   const url = sheetCsvUrl();
   if (!url) {
     return { contacts: [] as ReportedContact[], configured: false };
+  }
+
+  if (cachedContacts && Date.now() - cachedAt < SHEET_REFRESH_MS) {
+    return { contacts: cachedContacts, configured: true };
   }
 
   const res = await fetch(url, { cache: "no-store" });
@@ -112,5 +121,7 @@ export async function loadSheetContacts() {
   if (!res.ok || text.trimStart().startsWith("<!")) {
     throw new Error("The Google Sheet could not be read. Share it so anyone with the link can view.");
   }
-  return { contacts: contactsFromCsv(text), configured: true };
+  cachedContacts = contactsFromCsv(text);
+  cachedAt = Date.now();
+  return { contacts: cachedContacts, configured: true };
 }

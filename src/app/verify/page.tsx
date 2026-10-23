@@ -56,7 +56,7 @@ export default function VerifyPage() {
         });
     };
     load();
-    const timer = window.setInterval(load, 30000);
+    const timer = window.setInterval(load, 30 * 60 * 1000);
     return () => {
       cancelled = true;
       window.clearInterval(timer);

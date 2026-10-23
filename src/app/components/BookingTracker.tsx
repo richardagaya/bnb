@@ -313,7 +313,6 @@ export default function BookingTracker({
               <label className="bk-label">Check-in</label>
               <DatePicker
                 value={form.checkIn}
-                max={form.checkOut ? addDays(form.checkOut, -1) : undefined}
                 rangeEnd={form.checkOut}
                 placeholder="Select check-in"
                 isDateBlocked={(day) => takenNights.has(day)}
