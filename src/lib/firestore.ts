@@ -178,6 +178,28 @@ export async function setFinancialData(uid: string, listingId: string, data: Fin
   });
 }
 
+// ─── Monthly revenue goals ────────────────────────────────────────────────────
+
+export async function getMonthlyGoals(uid: string, listingId: string): Promise<Record<string, number>> {
+  const snap = await getDoc(doc(db, "users", uid, "goals", listingId));
+  if (!snap.exists()) return {};
+  const targets = snap.data()?.targets;
+  if (!targets || typeof targets !== "object") return {};
+  const clean: Record<string, number> = {};
+  for (const [month, amount] of Object.entries(targets as Record<string, unknown>)) {
+    const value = typeof amount === "number" ? amount : Number(amount);
+    if (month && Number.isFinite(value) && value > 0) clean[month] = value;
+  }
+  return clean;
+}
+
+export async function setMonthlyGoals(uid: string, listingId: string, targets: Record<string, number>) {
+  await setDoc(doc(db, "users", uid, "goals", listingId), {
+    targets,
+    updatedAt: serverTimestamp(),
+  });
+}
+
 // ─── Expenses ─────────────────────────────────────────────────────────────────
 
 export async function getExpenses(uid: string, listingId: string): Promise<Expense[]> {

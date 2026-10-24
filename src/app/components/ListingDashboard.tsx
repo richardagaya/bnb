@@ -6,6 +6,7 @@ import FinancialCalculator, { FinancialData } from "./FinancialCalculator";
 import ExpenseTracker, { Expense } from "./ExpenseTracker";
 import BookingTracker, { Booking } from "./BookingTracker";
 import ReferralTracker, { Referral } from "./ReferralTracker";
+import GoalsPanel from "./GoalsPanel";
 import MonthNav from "./MonthNav";
 import MonthPieChart, { PieSlice } from "./MonthPieChart";
 
@@ -59,6 +60,8 @@ import {
   deleteReferral as fsDeleteReferral,
   getCalendarSources,
   setCalendarSources as fsSetCalendarSources,
+  getMonthlyGoals,
+  setMonthlyGoals as fsSetMonthlyGoals,
   type FSCalendarSource,
 } from "@/lib/firestore";
 
@@ -98,6 +101,7 @@ const DEFAULT_FINANCIAL_DATA: FinancialData = {
 
 const TABS = [
   { id: "overview", label: "Overview" },
+  { id: "goals", label: "Goals" },
   { id: "financials", label: "Financials" },
   { id: "bookings", label: "Bookings" },
   { id: "referrals", label: "Referrals" },
@@ -153,6 +157,10 @@ export default function ListingDashboard({
   })();
   const [bookingsMonth, setBookingsMonth] = useState<string>(currentMonthKey);
   const [referralsMonth, setReferralsMonth] = useState<string>(currentMonthKey);
+  const [goalsMonth, setGoalsMonth] = useState<string>(currentMonthKey);
+  const [goals, setGoals] = useState<Record<string, number>>(() =>
+    fromStorage(`bnb_goals_${listing.id}`, {})
+  );
 
   // First day of a "YYYY-MM" month, or today if it's the current month, for seeding new entries.
   const seedDateForMonth = (monthKey: string) =>
@@ -192,6 +200,7 @@ export default function ListingDashboard({
   const finSaveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   // Timer ref for debouncing calendar-source saves.
   const calSaveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const goalsSaveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   // ── Load from Firestore on mount ──────────────────────────────────────────
   useEffect(() => {
@@ -203,8 +212,9 @@ export default function ListingDashboard({
       getBookings(uid, listing.id),
       getCalendarSources(uid, listing.id),
       getReferrals(uid, listing.id),
+      getMonthlyGoals(uid, listing.id),
     ])
-      .then(([fsFin, fsExp, fsBkn, fsCal, fsRef]) => {
+      .then(([fsFin, fsExp, fsBkn, fsCal, fsRef, fsGoals]) => {
         if (cancelled) return;
 
         if (fsFin && Object.keys(fsFin).length > 0) {
@@ -247,6 +257,15 @@ export default function ListingDashboard({
           const localCal = fromStorage<CalendarSource[]>(`bnb_cal_${listing.id}`, []);
           if (localCal.length > 0) {
             fsSetCalendarSources(uid, listing.id, localCal as FSCalendarSource[]).catch(() => {});
+          }
+        }
+
+        if (Object.keys(fsGoals).length > 0) {
+          setGoals(fsGoals);
+        } else {
+          const localGoals = fromStorage<Record<string, number>>(`bnb_goals_${listing.id}`, {});
+          if (Object.keys(localGoals).length > 0) {
+            fsSetMonthlyGoals(uid, listing.id, localGoals).catch(() => {});
           }
         }
 
@@ -293,6 +312,10 @@ export default function ListingDashboard({
     localStorage.setItem(`bnb_ref_${listing.id}`, JSON.stringify(referrals));
   }, [referrals, listing.id]);
 
+  useEffect(() => {
+    localStorage.setItem(`bnb_goals_${listing.id}`, JSON.stringify(goals));
+  }, [goals, listing.id]);
+
   // ── Sync financialData → Firestore (debounced 800 ms) ────────────────────
   useEffect(() => {
     if (!fsLoaded.current) return;
@@ -320,6 +343,19 @@ export default function ListingDashboard({
     return () => clearTimeout(calSaveTimer.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [calendarSources, uid, listing.id]);
+
+  useEffect(() => {
+    if (!fsLoaded.current) return;
+    clearTimeout(goalsSaveTimer.current);
+    goalsSaveTimer.current = setTimeout(() => {
+      persist(
+        fsSetMonthlyGoals(uid, listing.id, goals),
+        { error: "Couldn't save this month's goal — it's kept on this device." }
+      );
+    }, 400);
+    return () => clearTimeout(goalsSaveTimer.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [goals, uid, listing.id]);
 
   // Settings form state — kept in sync with the listing prop
   const [settingsForm, setSettingsForm] = useState({
@@ -640,6 +676,27 @@ export default function ListingDashboard({
                 </div>
               </div>
             </div>
+          );
+        })()}
+
+        {activeTab === "goals" && (() => {
+          const monthBookings = bookings.filter((b) => b.status !== "cancelled" && b.checkIn.startsWith(goalsMonth));
+          const monthReferrals = referrals.filter((r) => r.date.startsWith(goalsMonth));
+          const bookingRevenue = monthBookings.reduce((sum, b) => sum + b.amountPaid, 0);
+          const referralRevenue = monthReferrals.reduce((sum, r) => sum + r.commissionReceived, 0);
+          const dataMonths = new Set<string>(Object.keys(goals));
+          return (
+            <GoalsPanel
+              month={goalsMonth}
+              onMonthChange={setGoalsMonth}
+              dataMonths={dataMonths}
+              target={goals[goalsMonth] ?? 0}
+              bookingRevenue={bookingRevenue}
+              referralRevenue={referralRevenue}
+              currency={currency}
+              accentColor={listing.color}
+              onSaveTarget={(amount) => setGoals((prev) => ({ ...prev, [goalsMonth]: amount }))}
+            />
           );
         })()}
 
