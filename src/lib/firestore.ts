@@ -2,11 +2,15 @@
  * Firestore CRUD helpers for Tracktar.
  *
  * Data model:
- *   users/{uid}                          – user profile
- *   users/{uid}/listings/{listingId}     – property listings
- *   users/{uid}/financials/{listingId}   – financial calculator state
- *   users/{uid}/expenses/{listingId}     – expense records
- *   users/{uid}/calendar/{listingId}     – calendar / booking events
+ *   users/{uid}                                      – user profile
+ *   users/{uid}/listings/{listingId}                 – property listings
+ *   users/{uid}/listings/{listingId}/cohosts/{id}    – cohost membership (server-written)
+ *   users/{uid}/sharedListings/{hostUid_listingId}   – listings shared with this user
+ *   users/{uid}/financials/{listingId}               – financial calculator state
+ *   users/{uid}/expenses/{listingId}/items/{id}      – expense records
+ *   users/{uid}/bookings/{listingId}/items/{id}      – bookings
+ *   users/{uid}/emailLog/{id}                        – sent-mail idempotency (server-only)
+ *   cohostInvites/{inviteId}                         – email invites (server-only)
  */
 
 import {
@@ -142,6 +146,61 @@ export async function updateUserProfile(uid: string, updates: Partial<Omit<UserP
 export async function getListings(uid: string): Promise<Listing[]> {
   const snap = await getDocs(collection(db, "users", uid, "listings"));
   return snap.docs.map((d) => ({ id: d.id, ...d.data() } as Listing));
+}
+
+export async function getListing(uid: string, listingId: string): Promise<Listing | null> {
+  const snap = await getDoc(doc(db, "users", uid, "listings", listingId));
+  return snap.exists() ? ({ id: snap.id, ...snap.data() } as Listing) : null;
+}
+
+export type CohostMember = {
+  id: string;
+  email: string;
+  name: string;
+  status: "pending" | "active";
+  cohostUid?: string | null;
+};
+
+export type SharedListingAccess = {
+  id: string;
+  hostUid: string;
+  listingId: string;
+  listingName: string;
+  hostName: string;
+  status: "pending" | "active";
+};
+
+/** Host-only. Membership documents are created by the cohost API. */
+export async function getCohosts(hostUid: string, listingId: string): Promise<CohostMember[]> {
+  const snap = await getDocs(collection(db, "users", hostUid, "listings", listingId, "cohosts"));
+  return snap.docs
+    .map((d) => {
+      const data = d.data();
+      return {
+        id: d.id,
+        email: String(data.email ?? ""),
+        name: String(data.name ?? ""),
+        status: data.status === "active" ? "active" as const : "pending" as const,
+        cohostUid: (data.cohostUid as string | null | undefined) ?? null,
+      };
+    })
+    .sort((a, b) => a.email.localeCompare(b.email));
+}
+
+/** Listings this user was invited to. Only `active` rows are shown in the dashboard. */
+export async function getSharedListings(uid: string): Promise<SharedListingAccess[]> {
+  const snap = await getDocs(collection(db, "users", uid, "sharedListings"));
+  return snap.docs.map((d) => {
+    const data = d.data();
+    return {
+      id: d.id,
+      hostUid: String(data.hostUid ?? ""),
+      listingId: String(data.listingId ?? ""),
+      listingName: String(data.listingName ?? ""),
+      hostName: String(data.hostName ?? ""),
+      status: data.status === "active" ? "active" as const : "pending" as const,
+    };
+  });
 }
 
 export async function addListing(uid: string, listing: Omit<Listing, "id" | "createdAt" | "updatedAt">): Promise<string> {

@@ -7,16 +7,41 @@ import ListingDashboard from "../components/ListingDashboard";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   getListings,
+  getListing,
+  getSharedListings,
   addListing as fsAddListing,
   updateListing as fsUpdateListing,
   deleteListing as fsDeleteListing,
+  type Listing as FsListing,
 } from "@/lib/firestore";
+
+function selectionKey(ownerUid: string, listingId: string) {
+  return `${ownerUid}:${listingId}`;
+}
+
+function toListing(
+  listing: FsListing,
+  extra: Pick<Listing, "role" | "ownerUid" | "hostName">
+): Listing {
+  return {
+    id: listing.id,
+    name: listing.name,
+    address: listing.address ?? "",
+    type: listing.type ?? "",
+    color: listing.color || "#81B29A",
+    selectionKey: selectionKey(extra.ownerUid ?? "", listing.id),
+    role: extra.role,
+    ownerUid: extra.ownerUid,
+    hostName: extra.hostName,
+  };
+}
 
 export default function DashboardPage() {
   const { user } = useAuth();
   const router = useRouter();
 
   const [listings, setListings] = useState<Listing[]>([]);
+  const [sharedListings, setSharedListings] = useState<Listing[]>([]);
   const [activeListing, setActiveListing] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loadingListings, setLoadingListings] = useState(false);
@@ -30,12 +55,40 @@ export default function DashboardPage() {
     setLoadingListings(true);
     setErrorMsg(null);
 
-    getListings(user.uid)
-      .then((data) => {
+    Promise.all([getListings(user.uid), getSharedListings(user.uid)])
+      .then(async ([owned, shared]) => {
         if (cancelled) return;
-        setListings(data);
-        // Pick the first listing as active only if nothing is selected yet
-        setActiveListing((prev) => prev ?? (data[0]?.id ?? null));
+        const ownedListings = owned.map((listing) =>
+          toListing(listing, { role: "host", ownerUid: user.uid })
+        );
+        const sharedRows = await Promise.all(
+          shared
+            .filter((row) => row.status === "active" && row.hostUid && row.listingId)
+            .map(async (row) => {
+              try {
+                const listing = await getListing(row.hostUid, row.listingId);
+                if (!listing) return null;
+                return toListing(listing, {
+                  role: "cohost",
+                  ownerUid: row.hostUid,
+                  hostName: row.hostName,
+                });
+              } catch (err) {
+                console.error("Failed to load shared listing:", err);
+                return null;
+              }
+            })
+        );
+        if (cancelled) return;
+        const visibleShared = sharedRows.filter((row): row is Listing => row !== null);
+        setListings(ownedListings);
+        setSharedListings(visibleShared);
+        setActiveListing((prev) => {
+          if (prev && [...ownedListings, ...visibleShared].some((l) => l.selectionKey === prev)) {
+            return prev;
+          }
+          return ownedListings[0]?.selectionKey ?? visibleShared[0]?.selectionKey ?? null;
+        });
       })
       .catch((err) => {
         console.error("Failed to load listings:", err);
@@ -59,10 +112,21 @@ export default function DashboardPage() {
     if (!user) return;
     try {
       setErrorMsg(null);
-      const id = await fsAddListing(user.uid, listing);
-      const newListing: Listing = { ...listing, id };
+      const id = await fsAddListing(user.uid, {
+        name: listing.name,
+        address: listing.address,
+        type: listing.type,
+        color: listing.color,
+      });
+      const newListing: Listing = {
+        ...listing,
+        id,
+        role: "host",
+        ownerUid: user.uid,
+        selectionKey: selectionKey(user.uid, id),
+      };
       setListings((prev) => [...prev, newListing]);
-      setActiveListing(id);
+      setActiveListing(newListing.selectionKey ?? id);
       setSidebarOpen(false);
     } catch (err) {
       console.error("Failed to add listing:", err);
@@ -76,9 +140,17 @@ export default function DashboardPage() {
   const updateListing = async (id: string, updates: Partial<Omit<Listing, "id">>) => {
     if (!user) return;
     try {
-      await fsUpdateListing(user.uid, id, updates);
+      const { name, address, type, color } = updates;
+      const payload = Object.fromEntries(
+        Object.entries({ name, address, type, color }).filter(([, value]) => value !== undefined)
+      );
+      await fsUpdateListing(
+        user.uid,
+        id,
+        payload as Partial<Omit<FsListing, "id" | "createdAt">>
+      );
       setListings((prev) =>
-        prev.map((l) => (l.id === id ? { ...l, ...updates } : l))
+        prev.map((l) => (l.id === id && l.role !== "cohost" ? { ...l, ...updates } : l))
       );
     } catch (err) {
       console.error("Failed to update listing:", err);
@@ -91,8 +163,10 @@ export default function DashboardPage() {
     try {
       await fsDeleteListing(user.uid, id);
       setListings((prev) => {
-        const remaining = prev.filter((l) => l.id !== id);
-        setActiveListing(remaining.length > 0 ? remaining[0].id : null);
+        const remaining = prev.filter((l) => !(l.id === id && l.role !== "cohost"));
+        setActiveListing(
+          remaining[0]?.selectionKey ?? sharedListings[0]?.selectionKey ?? null
+        );
         return remaining;
       });
     } catch (err) {
@@ -105,7 +179,10 @@ export default function DashboardPage() {
     router.push("/");
   };
 
-  const currentListing = listings.find((l) => l.id === activeListing);
+  const currentListing = [...listings, ...sharedListings].find(
+    (l) => (l.selectionKey ?? l.id) === activeListing
+  );
+  const isCohostView = currentListing?.role === "cohost";
 
   if (!user) return null;
 
@@ -120,6 +197,7 @@ export default function DashboardPage() {
 
       <ListingsSidebar
         listings={listings}
+        sharedListings={sharedListings}
         activeListing={activeListing}
         onSelectListing={(id) => {
           setActiveListing(id);
@@ -148,12 +226,15 @@ export default function DashboardPage() {
           </div>
         ) : currentListing ? (
           <ListingDashboard
-            key={currentListing.id}
+            key={currentListing.selectionKey ?? currentListing.id}
             listing={currentListing}
-            uid={user.uid}
+            uid={currentListing.ownerUid ?? user.uid}
+            role={isCohostView ? "cohost" : "host"}
             onOpenSidebar={() => setSidebarOpen(true)}
-            onUpdateListing={(updates) => updateListing(currentListing.id, updates)}
-            onDeleteListing={() => deleteListing(currentListing.id)}
+            onUpdateListing={
+              isCohostView ? undefined : (updates) => updateListing(currentListing.id, updates)
+            }
+            onDeleteListing={isCohostView ? undefined : () => deleteListing(currentListing.id)}
           />
         ) : (
           <div className="no-listing">
@@ -167,8 +248,8 @@ export default function DashboardPage() {
             <div className="no-listing-content">
               <h2>Welcome to Tracktar</h2>
               <p>
-                Add your first property from the sidebar to start tracking
-                revenue, expenses, and profitability.
+                Add a property from the sidebar, or accept a cohost invite, to start
+                tracking revenue, expenses, and profitability.
               </p>
             </div>
           </div>

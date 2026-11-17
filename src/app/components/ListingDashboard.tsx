@@ -40,6 +40,7 @@ function monthPieSlices(input: {
   return { slices, caption };
 }
 import { Listing } from "./ListingsSidebar";
+import CohostsPanel from "./CohostsPanel";
 import { useNotifications } from "@/contexts/NotificationContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatCurrency as fmtMoney, CURRENCIES } from "@/lib/currency";
@@ -76,9 +77,26 @@ function fromStorage<T>(key: string, fallback: T): T {
   }
 }
 
+function cacheKey(ownerUid: string, listingId: string, kind: string) {
+  return `bnb_${kind}_${ownerUid}_${listingId}`;
+}
+
+/** Prefer the owner-scoped cache. Hosts still fall back to the older unscoped key. */
+function readCache<T>(ownerUid: string, listingId: string, kind: string, fallback: T, legacy: boolean): T {
+  const scoped = fromStorage<T | null>(cacheKey(ownerUid, listingId, kind), null);
+  if (scoped !== null && scoped !== undefined) return scoped;
+  if (legacy) {
+    const previous = fromStorage<T | null>(`bnb_${kind}_${listingId}`, null);
+    if (previous !== null && previous !== undefined) return previous;
+  }
+  return fallback;
+}
+
 interface ListingDashboardProps {
   listing: Listing;
+  /** Owner of the listing. A cohost passes the host's uid so both share the same records. */
   uid: string;
+  role?: "host" | "cohost";
   onOpenSidebar?: () => void;
   onUpdateListing?: (updates: Partial<Omit<Listing, "id">>) => void;
   onDeleteListing?: () => void;
@@ -99,7 +117,7 @@ const DEFAULT_FINANCIAL_DATA: FinancialData = {
   monthlyCleaner: 0,
 };
 
-const TABS = [
+const HOST_TABS = [
   { id: "overview", label: "Overview" },
   { id: "goals", label: "Goals" },
   { id: "financials", label: "Financials" },
@@ -108,8 +126,18 @@ const TABS = [
   { id: "summary", label: "Summary" },
   { id: "expenses", label: "Expenses" },
   { id: "calendar", label: "Calendar" },
+  { id: "cohosts", label: "Cohosts" },
   { id: "settings", label: "Settings" },
 ] as const;
+
+const COHOST_TAB_IDS = ["bookings", "summary", "calendar", "expenses"] as const;
+
+function tabsFor(role: "host" | "cohost") {
+  if (role === "host") return HOST_TABS;
+  return HOST_TABS.filter((tab) =>
+    (COHOST_TAB_IDS as readonly string[]).includes(tab.id)
+  );
+}
 
 const LISTING_COLORS = [
   "#E07A5F", "#3D405B", "#81B29A", "#F2CC8F",
@@ -124,6 +152,7 @@ const LISTING_TYPES = [
 export default function ListingDashboard({
   listing,
   uid,
+  role = "host",
   onOpenSidebar,
   onUpdateListing,
   onDeleteListing,
@@ -142,7 +171,9 @@ export default function ListingDashboard({
     }
   };
   const formatCurrency = (value: number) => fmtMoney(value, currency);
-  const [activeTab, setActiveTab] = useState("overview");
+  const isCohost = role === "cohost";
+  const visibleTabs = tabsFor(role);
+  const [activeTab, setActiveTab] = useState(isCohost ? "bookings" : "overview");
 
   // ── Overview month filter ──
   const [overviewMonth, setOverviewMonth] = useState<string>(() => {
@@ -159,7 +190,7 @@ export default function ListingDashboard({
   const [referralsMonth, setReferralsMonth] = useState<string>(currentMonthKey);
   const [goalsMonth, setGoalsMonth] = useState<string>(currentMonthKey);
   const [goals, setGoals] = useState<Record<string, number>>(() =>
-    fromStorage(`bnb_goals_${listing.id}`, {})
+    readCache(uid, listing.id, "goals", {}, !isCohost)
   );
 
   // First day of a "YYYY-MM" month, or today if it's the current month, for seeding new entries.
@@ -179,19 +210,19 @@ export default function ListingDashboard({
   // ── Per-listing persisted state ──
   // Initialised from localStorage for an instant render; overwritten by Firestore once loaded.
   const [financialData, setFinancialData] = useState<FinancialData>(() =>
-    fromStorage(`bnb_fin_${listing.id}`, DEFAULT_FINANCIAL_DATA)
+    readCache(uid, listing.id, "fin", DEFAULT_FINANCIAL_DATA, !isCohost)
   );
   const [expenses, setExpenses] = useState<Expense[]>(() =>
-    fromStorage(`bnb_exp_${listing.id}`, [])
+    readCache(uid, listing.id, "exp", [], !isCohost)
   );
   const [bookings, setBookings] = useState<Booking[]>(() =>
-    fromStorage(`bnb_bkn_${listing.id}`, [])
+    readCache(uid, listing.id, "bkn", [], !isCohost)
   );
   const [calendarSources, setCalendarSources] = useState<CalendarSource[]>(() =>
-    fromStorage(`bnb_cal_${listing.id}`, [])
+    readCache(uid, listing.id, "cal", [], !isCohost)
   );
   const [referrals, setReferrals] = useState<Referral[]>(() =>
-    fromStorage(`bnb_ref_${listing.id}`, [])
+    readCache(uid, listing.id, "ref", [], !isCohost)
   );
 
   // True once the initial Firestore load has settled (success or error).
@@ -210,25 +241,25 @@ export default function ListingDashboard({
       getFinancialData(uid, listing.id),
       getExpenses(uid, listing.id),
       getBookings(uid, listing.id),
-      getCalendarSources(uid, listing.id),
+      isCohost ? Promise.resolve([]) : getCalendarSources(uid, listing.id),
       getReferrals(uid, listing.id),
-      getMonthlyGoals(uid, listing.id),
+      isCohost ? Promise.resolve({}) : getMonthlyGoals(uid, listing.id),
     ])
       .then(([fsFin, fsExp, fsBkn, fsCal, fsRef, fsGoals]) => {
         if (cancelled) return;
 
         if (fsFin && Object.keys(fsFin).length > 0) {
           setFinancialData(fsFin as unknown as FinancialData);
-        } else {
+        } else if (!isCohost) {
           // Migrate localStorage → Firestore if Firestore is empty
-          const localFin = fromStorage(`bnb_fin_${listing.id}`, null as FinancialData | null);
+          const localFin = readCache<FinancialData | null>(uid, listing.id, "fin", null, true);
           if (localFin) fsSetFinancialData(uid, listing.id, localFin as unknown as Record<string, unknown>).catch(() => {});
         }
 
         if (fsExp.length > 0) {
           setExpenses(fsExp as Expense[]);
         } else {
-          const localExp = fromStorage<Expense[]>(`bnb_exp_${listing.id}`, []);
+          const localExp = readCache<Expense[]>(uid, listing.id, "exp", [], !isCohost);
           if (localExp.length > 0) {
             localExp.forEach(({ id: _id, ...rest }) => {
               fsAddExpense(uid, listing.id, rest).catch(() => {});
@@ -243,7 +274,7 @@ export default function ListingDashboard({
             return pending.length > 0 ? [...(fsBkn as Booking[]), ...pending] : (fsBkn as Booking[]);
           });
         } else {
-          const localBkn = fromStorage<Booking[]>(`bnb_bkn_${listing.id}`, []);
+          const localBkn = readCache<Booking[]>(uid, listing.id, "bkn", [], !isCohost);
           if (localBkn.length > 0) {
             localBkn.forEach(({ id: _id, ...rest }) => {
               fsAddBooking(uid, listing.id, rest).catch(() => {});
@@ -251,19 +282,19 @@ export default function ListingDashboard({
           }
         }
 
-        if (fsCal.length > 0) {
+        if (!isCohost && fsCal.length > 0) {
           setCalendarSources(fsCal as CalendarSource[]);
-        } else {
-          const localCal = fromStorage<CalendarSource[]>(`bnb_cal_${listing.id}`, []);
+        } else if (!isCohost) {
+          const localCal = readCache<CalendarSource[]>(uid, listing.id, "cal", [], true);
           if (localCal.length > 0) {
             fsSetCalendarSources(uid, listing.id, localCal as FSCalendarSource[]).catch(() => {});
           }
         }
 
-        if (Object.keys(fsGoals).length > 0) {
+        if (!isCohost && Object.keys(fsGoals).length > 0) {
           setGoals(fsGoals);
-        } else {
-          const localGoals = fromStorage<Record<string, number>>(`bnb_goals_${listing.id}`, {});
+        } else if (!isCohost) {
+          const localGoals = readCache<Record<string, number>>(uid, listing.id, "goals", {}, true);
           if (Object.keys(localGoals).length > 0) {
             fsSetMonthlyGoals(uid, listing.id, localGoals).catch(() => {});
           }
@@ -271,8 +302,8 @@ export default function ListingDashboard({
 
         if (fsRef.length > 0) {
           setReferrals(fsRef as Referral[]);
-        } else {
-          const localRef = fromStorage<Referral[]>(`bnb_ref_${listing.id}`, []);
+        } else if (!isCohost) {
+          const localRef = readCache<Referral[]>(uid, listing.id, "ref", [], true);
           if (localRef.length > 0) {
             localRef.forEach(({ id: _id, ...rest }) => {
               fsAddReferral(uid, listing.id, rest).catch(() => {});
@@ -289,36 +320,36 @@ export default function ListingDashboard({
 
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [uid, listing.id]);
+  }, [uid, listing.id, isCohost]);
 
   // ── Sync local state → localStorage (offline cache) ──────────────────────
   useEffect(() => {
-    localStorage.setItem(`bnb_fin_${listing.id}`, JSON.stringify(financialData));
-  }, [financialData, listing.id]);
+    localStorage.setItem(cacheKey(uid, listing.id, "fin"), JSON.stringify(financialData));
+  }, [financialData, listing.id, uid]);
 
   useEffect(() => {
-    localStorage.setItem(`bnb_exp_${listing.id}`, JSON.stringify(expenses));
-  }, [expenses, listing.id]);
+    localStorage.setItem(cacheKey(uid, listing.id, "exp"), JSON.stringify(expenses));
+  }, [expenses, listing.id, uid]);
 
   useEffect(() => {
-    localStorage.setItem(`bnb_bkn_${listing.id}`, JSON.stringify(bookings));
-  }, [bookings, listing.id]);
+    localStorage.setItem(cacheKey(uid, listing.id, "bkn"), JSON.stringify(bookings));
+  }, [bookings, listing.id, uid]);
 
   useEffect(() => {
-    localStorage.setItem(`bnb_cal_${listing.id}`, JSON.stringify(calendarSources));
-  }, [calendarSources, listing.id]);
+    localStorage.setItem(cacheKey(uid, listing.id, "cal"), JSON.stringify(calendarSources));
+  }, [calendarSources, listing.id, uid]);
 
   useEffect(() => {
-    localStorage.setItem(`bnb_ref_${listing.id}`, JSON.stringify(referrals));
-  }, [referrals, listing.id]);
+    localStorage.setItem(cacheKey(uid, listing.id, "ref"), JSON.stringify(referrals));
+  }, [referrals, listing.id, uid]);
 
   useEffect(() => {
-    localStorage.setItem(`bnb_goals_${listing.id}`, JSON.stringify(goals));
-  }, [goals, listing.id]);
+    localStorage.setItem(cacheKey(uid, listing.id, "goals"), JSON.stringify(goals));
+  }, [goals, listing.id, uid]);
 
   // ── Sync financialData → Firestore (debounced 800 ms) ────────────────────
   useEffect(() => {
-    if (!fsLoaded.current) return;
+    if (isCohost || !fsLoaded.current) return;
     clearTimeout(finSaveTimer.current);
     finSaveTimer.current = setTimeout(() => {
       persist(
@@ -328,11 +359,11 @@ export default function ListingDashboard({
     }, 800);
     return () => clearTimeout(finSaveTimer.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [financialData, uid, listing.id]);
+  }, [financialData, uid, listing.id, isCohost]);
 
   // ── Sync calendarSources → Firestore (debounced 400 ms) ──────────────────
   useEffect(() => {
-    if (!fsLoaded.current) return;
+    if (isCohost || !fsLoaded.current) return;
     clearTimeout(calSaveTimer.current);
     calSaveTimer.current = setTimeout(() => {
       persist(
@@ -342,10 +373,10 @@ export default function ListingDashboard({
     }, 400);
     return () => clearTimeout(calSaveTimer.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [calendarSources, uid, listing.id]);
+  }, [calendarSources, uid, listing.id, isCohost]);
 
   useEffect(() => {
-    if (!fsLoaded.current) return;
+    if (isCohost || !fsLoaded.current) return;
     clearTimeout(goalsSaveTimer.current);
     goalsSaveTimer.current = setTimeout(() => {
       persist(
@@ -355,7 +386,7 @@ export default function ListingDashboard({
     }, 400);
     return () => clearTimeout(goalsSaveTimer.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [goals, uid, listing.id]);
+  }, [goals, uid, listing.id, isCohost]);
 
   // Settings form state — kept in sync with the listing prop
   const [settingsForm, setSettingsForm] = useState({
@@ -378,21 +409,21 @@ export default function ListingDashboard({
   };
 
   const handleTabKeyDown = useCallback((e: React.KeyboardEvent, tabId: string) => {
-    const idx = TABS.findIndex((t) => t.id === tabId);
+    const idx = visibleTabs.findIndex((t) => t.id === tabId);
     if (idx < 0) return;
     let next = idx;
-    if (e.key === "ArrowRight") next = (idx + 1) % TABS.length;
-    else if (e.key === "ArrowLeft") next = (idx - 1 + TABS.length) % TABS.length;
+    if (e.key === "ArrowRight") next = (idx + 1) % visibleTabs.length;
+    else if (e.key === "ArrowLeft") next = (idx - 1 + visibleTabs.length) % visibleTabs.length;
     else if (e.key === "Home") next = 0;
-    else if (e.key === "End") next = TABS.length - 1;
+    else if (e.key === "End") next = visibleTabs.length - 1;
     else return;
     e.preventDefault();
-    const nextId = TABS[next].id;
+    const nextId = visibleTabs[next].id;
     setActiveTab(nextId);
     requestAnimationFrame(() => {
       document.getElementById(`tab-${nextId}`)?.focus();
     });
-  }, []);
+  }, [visibleTabs]);
 
   const addCalendarSource = (source: Omit<CalendarSource, "id" | "lastSynced" | "status">) => {
     setCalendarSources((prev) => [
@@ -542,6 +573,7 @@ export default function ListingDashboard({
           <div className="listing-name-row">
             <h1 className="listing-name">{listing.name}</h1>
             <span className="listing-type-badge">{listing.type}</span>
+            {isCohost && <span className="listing-type-badge">Cohost</span>}
           </div>
           {listing.address && <p className="listing-address">{listing.address}</p>}
         </div>
@@ -549,7 +581,7 @@ export default function ListingDashboard({
 
       {/* Tabs */}
       <div className="tabs-bar" role="tablist" aria-label="Property sections">
-        {TABS.map((tab) => (
+        {visibleTabs.map((tab) => (
           <button
             key={tab.id}
             id={`tab-${tab.id}`}
@@ -774,15 +806,25 @@ export default function ListingDashboard({
               {/* Setup prompt */}
               {bookings.filter((b) => b.status !== "cancelled").length === 0 && expenses.length === 0 && (
                 <div className="ms-empty">
-                  <p>
-                    Set up your{" "}
-                    <button className="ms-link" onClick={() => setActiveTab("financials")}>Financials</button>,
-                    log{" "}
-                    <button className="ms-link" onClick={() => setActiveTab("bookings")}>Bookings</button>,
-                    and track{" "}
-                    <button className="ms-link" onClick={() => setActiveTab("expenses")}>Expenses</button>{" "}
-                    to see your monthly history here.
-                  </p>
+                  {isCohost ? (
+                    <p>
+                      Log{" "}
+                      <button className="ms-link" onClick={() => setActiveTab("bookings")}>Bookings</button>
+                      {" "}and{" "}
+                      <button className="ms-link" onClick={() => setActiveTab("expenses")}>Expenses</button>
+                      {" "}to see monthly history here.
+                    </p>
+                  ) : (
+                    <p>
+                      Set up your{" "}
+                      <button className="ms-link" onClick={() => setActiveTab("financials")}>Financials</button>,
+                      log{" "}
+                      <button className="ms-link" onClick={() => setActiveTab("bookings")}>Bookings</button>,
+                      and track{" "}
+                      <button className="ms-link" onClick={() => setActiveTab("expenses")}>Expenses</button>{" "}
+                      to see your monthly history here.
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -1084,6 +1126,10 @@ export default function ListingDashboard({
             onSync={syncCalendarSource}
             bookings={bookings}
           />
+        )}
+
+        {activeTab === "cohosts" && !isCohost && (
+          <CohostsPanel hostUid={uid} listingId={listing.id} listingName={listing.name} />
         )}
 
         {activeTab === "settings" && (

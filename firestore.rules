@@ -1,9 +1,79 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Each user can only read and write their own data
-    match /users/{userId}/{document=**} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    function cohostDoc(hostUid, listingId) {
+      return /databases/$(database)/documents/users/$(hostUid)/listings/$(listingId)/cohosts/$(request.auth.uid);
+    }
+
+    function isActiveCohost(hostUid, listingId) {
+      return signedIn()
+        && exists(cohostDoc(hostUid, listingId))
+        && get(cohostDoc(hostUid, listingId)).data.status == "active";
+    }
+
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    match /users/{userId}/listings/{listingId} {
+      allow read: if isOwner(userId) || isActiveCohost(userId, listingId);
+      allow write: if isOwner(userId);
+
+      match /cohosts/{memberId} {
+        allow read: if isOwner(userId);
+        allow write: if false;
+      }
+    }
+
+    match /users/{userId}/financials/{listingId} {
+      allow read: if isOwner(userId) || isActiveCohost(userId, listingId);
+      allow write: if isOwner(userId);
+    }
+
+    match /users/{userId}/goals/{listingId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    match /users/{userId}/expenses/{listingId}/items/{itemId} {
+      allow read, write: if isOwner(userId) || isActiveCohost(userId, listingId);
+    }
+
+    match /users/{userId}/bookings/{listingId}/items/{itemId} {
+      allow read, write: if isOwner(userId) || isActiveCohost(userId, listingId);
+    }
+
+    match /users/{userId}/referrals/{listingId}/items/{itemId} {
+      allow read: if isOwner(userId) || isActiveCohost(userId, listingId);
+      allow write: if isOwner(userId);
+    }
+
+    match /users/{userId}/calendarSources/{listingId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    match /users/{userId}/calendar/{listingId}/events/{eventId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    match /users/{userId}/sharedListings/{shareId} {
+      allow read: if isOwner(userId);
+      allow write: if false;
+    }
+
+    match /users/{userId}/emailLog/{logId} {
+      allow read, write: if false;
+    }
+
+    match /cohostInvites/{inviteId} {
+      allow read, write: if false;
     }
 
     // Marketing list is written server-side only (see /api/marketing-email)

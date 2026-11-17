@@ -10,10 +10,16 @@ export interface Listing {
   type: string;
   color: string;
   imageUrl?: string;
+  /** Stable selection id when an owned and a shared property could share a document id. */
+  selectionKey?: string;
+  role?: "host" | "cohost";
+  ownerUid?: string;
+  hostName?: string;
 }
 
 interface ListingsSidebarProps {
   listings: Listing[];
+  sharedListings?: Listing[];
   activeListing: string | null;
   onSelectListing: (id: string) => void;
   onAddListing: (listing: Omit<Listing, "id">) => void;
@@ -34,8 +40,13 @@ const LISTING_TYPES = [
   "Cottage", "Cabin", "Condo", "Room",
 ];
 
+function itemKey(listing: Listing) {
+  return listing.selectionKey ?? listing.id;
+}
+
 export default function ListingsSidebar({
   listings,
+  sharedListings = [],
   activeListing,
   onSelectListing,
   onAddListing,
@@ -71,7 +82,7 @@ export default function ListingsSidebar({
         <div className="sidebar-logo">
           <img src="/logo.png" alt="Tracktar" className="sidebar-logo-img" />
         </div>
-        <p className="sidebar-subtitle">Your Properties</p>
+        <p className="sidebar-subtitle">Properties</p>
         {/* Close button — mobile only */}
         {onClose && (
           <button className="sidebar-close-btn" onClick={onClose} aria-label="Close menu">
@@ -81,31 +92,63 @@ export default function ListingsSidebar({
       </div>
 
       <nav className="listings-nav">
+        <p className="nav-section-label">Your properties</p>
         {listings.length === 0 && !showForm && (
           <div className="empty-state">
             <p>No listings yet.<br />Add your first property.</p>
           </div>
         )}
 
-        {listings.map((listing) => (
-          <button
-            key={listing.id}
-            className={`listing-item ${activeListing === listing.id ? "active" : ""}`}
-            onClick={() => onSelectListing(listing.id)}
-          >
-            <span
-              className="listing-color-dot"
-              style={{ background: listing.color }}
-            />
-            <div className="listing-item-info">
-              <span className="listing-item-name">{listing.name}</span>
-              <span className="listing-item-type">{listing.type}</span>
-            </div>
-            {activeListing === listing.id && (
-              <span className="active-indicator">→</span>
-            )}
-          </button>
-        ))}
+        {listings.map((listing) => {
+          const key = itemKey(listing);
+          const selected = activeListing === key;
+          return (
+            <button
+              key={key}
+              className={`listing-item ${selected ? "active" : ""}`}
+              onClick={() => onSelectListing(key)}
+            >
+              <span
+                className="listing-color-dot"
+                style={{ background: listing.color }}
+              />
+              <div className="listing-item-info">
+                <span className="listing-item-name">{listing.name}</span>
+                <span className="listing-item-type">{listing.type}</span>
+              </div>
+              {selected && <span className="active-indicator">→</span>}
+            </button>
+          );
+        })}
+
+        {sharedListings.length > 0 && (
+          <>
+            <p className="nav-section-label">Shared with you</p>
+            {sharedListings.map((listing) => {
+              const key = itemKey(listing);
+              const selected = activeListing === key;
+              return (
+                <button
+                  key={key}
+                  className={`listing-item ${selected ? "active" : ""}`}
+                  onClick={() => onSelectListing(key)}
+                >
+                  <span
+                    className="listing-color-dot"
+                    style={{ background: listing.color }}
+                  />
+                  <div className="listing-item-info">
+                    <span className="listing-item-name">{listing.name}</span>
+                    <span className="listing-item-type">
+                      {listing.hostName ? `Cohost · ${listing.hostName}` : "Cohost"}
+                    </span>
+                  </div>
+                  {selected && <span className="active-indicator">→</span>}
+                </button>
+              );
+            })}
+          </>
+        )}
       </nav>
 
       <div className="sidebar-footer">
@@ -263,6 +306,13 @@ export default function ListingsSidebar({
           flex: 1;
           padding: 12px 0;
           overflow-y: auto;
+        }
+        .nav-section-label {
+          margin: 8px 20px 4px;
+          font-size: 11px;
+          color: #4a5068;
+          text-transform: uppercase;
+          letter-spacing: 1px;
         }
         .empty-state {
           padding: 40px 20px;
