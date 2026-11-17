@@ -311,8 +311,11 @@ export default function ListingDashboard({
           }
         }
       })
-      .catch(() => {
+      .catch((err) => {
         // Network/permission error — keep showing localStorage data
+        if (isCohost && (err as { code?: string }).code === "permission-denied") {
+          toast.error("Firestore is blocking this property. Deploy the latest security rules, then refresh.");
+        }
       })
       .finally(() => {
         if (!cancelled) fsLoaded.current = true;

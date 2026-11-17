@@ -61,26 +61,45 @@ export default function DashboardPage() {
         const ownedListings = owned.map((listing) =>
           toListing(listing, { role: "host", ownerUid: user.uid })
         );
+        let sharedReadBlocked = false;
         const sharedRows = await Promise.all(
           shared
             .filter((row) => row.status === "active" && row.hostUid && row.listingId)
             .map(async (row) => {
+              const access = {
+                role: "cohost" as const,
+                ownerUid: row.hostUid,
+                hostName: row.hostName,
+              };
               try {
                 const listing = await getListing(row.hostUid, row.listingId);
                 if (!listing) return null;
-                return toListing(listing, {
-                  role: "cohost",
-                  ownerUid: row.hostUid,
-                  hostName: row.hostName,
-                });
+                return toListing(listing, access);
               } catch (err) {
                 console.error("Failed to load shared listing:", err);
-                return null;
+                const denied = (err as { code?: string }).code === "permission-denied";
+                if (!denied) return null;
+                sharedReadBlocked = true;
+                return toListing(
+                  {
+                    id: row.listingId,
+                    name: row.listingName || "Shared property",
+                    address: "",
+                    type: "Cohost",
+                    color: "#81B29A",
+                  },
+                  access
+                );
               }
             })
         );
         if (cancelled) return;
         const visibleShared = sharedRows.filter((row): row is Listing => row !== null);
+        if (sharedReadBlocked) {
+          setErrorMsg(
+            "Your cohost invite is active, but Firestore is still blocking the host's bookings and expenses. Deploy the latest rules, then refresh this page."
+          );
+        }
         setListings(ownedListings);
         setSharedListings(visibleShared);
         setActiveListing((prev) => {
