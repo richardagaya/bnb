@@ -104,7 +104,7 @@ function escapeHtml(value: string): string {
 }
 
 function moneyCell(amountValue: number, currency: string, emphasize = false): string {
-  const color = emphasize ? (amountValue >= 0 ? "#81b29a" : "#e07a5f") : "#e8e3d9";
+  const color = emphasize ? (amountValue >= 0 ? "#1f7a4d" : "#c2410c") : "#1c1917";
   return `<td style="padding:8px 0;text-align:right;font-weight:${emphasize ? 700 : 500};color:${color};">${escapeHtml(formatCurrency(amountValue, currency))}</td>`;
 }
 
@@ -120,14 +120,14 @@ export function buildMonthlySummaryEmail(input: {
   const rows = input.listings
     .map((listing) => {
       const name = escapeHtml(listing.name);
-      return `<tr><td colspan="2" style="padding:18px 0 8px;font-size:16px;font-weight:700;color:#e8e3d9;border-top:1px solid #1e2130;">${name}</td></tr>
-        <tr><td style="padding:6px 0;color:#8a91a8;">Stays</td><td style="padding:6px 0;text-align:right;color:#e8e3d9;">${listing.stays}</td></tr>
-        <tr><td style="padding:6px 0;color:#8a91a8;">Nights</td><td style="padding:6px 0;text-align:right;color:#e8e3d9;">${listing.nights}</td></tr>
-        <tr><td style="padding:6px 0;color:#8a91a8;">Collected</td>${moneyCell(listing.revenue, input.currency)}</tr>
-        <tr><td style="padding:6px 0;color:#8a91a8;">Outstanding</td>${moneyCell(listing.outstanding, input.currency)}</tr>
-        <tr><td style="padding:6px 0;color:#8a91a8;">Expenses</td>${moneyCell(listing.expenses, input.currency)}</tr>
-        <tr><td style="padding:6px 0;color:#8a91a8;">Fixed costs</td>${moneyCell(listing.fixedCosts, input.currency)}</tr>
-        <tr><td style="padding:8px 0;color:#e8e3d9;font-weight:700;">Profit</td>${moneyCell(listing.profit, input.currency, true)}</tr>`;
+      return `<tr><td colspan="2" style="padding:18px 0 8px;font-size:16px;font-weight:700;color:#1c1917;border-top:1px solid #e7e5e4;">${name}</td></tr>
+        <tr><td style="padding:6px 0;color:#57534e;">Stays</td><td style="padding:6px 0;text-align:right;color:#1c1917;">${listing.stays}</td></tr>
+        <tr><td style="padding:6px 0;color:#57534e;">Nights</td><td style="padding:6px 0;text-align:right;color:#1c1917;">${listing.nights}</td></tr>
+        <tr><td style="padding:6px 0;color:#57534e;">Collected</td>${moneyCell(listing.revenue, input.currency)}</tr>
+        <tr><td style="padding:6px 0;color:#57534e;">Outstanding</td>${moneyCell(listing.outstanding, input.currency)}</tr>
+        <tr><td style="padding:6px 0;color:#57534e;">Expenses</td>${moneyCell(listing.expenses, input.currency)}</tr>
+        <tr><td style="padding:6px 0;color:#57534e;">Fixed costs</td>${moneyCell(listing.fixedCosts, input.currency)}</tr>
+        <tr><td style="padding:8px 0;color:#1c1917;font-weight:700;">Profit</td>${moneyCell(listing.profit, input.currency, true)}</tr>`;
     })
     .join("");
 
@@ -138,19 +138,19 @@ export function buildMonthlySummaryEmail(input: {
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>${label} summary</title>
 </head>
-<body style="margin:0;padding:0;background:#f4f5f7;font-family:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="padding:32px 16px;">
+<body style="margin:0;padding:0;background:#ffffff;font-family:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding:32px 16px;background:#ffffff;">
     <tr><td>
-      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;background:#0f1219;border:1px solid #1e2130;border-radius:16px;">
-        <tr><td style="padding:28px 32px;border-bottom:1px solid #1e2130;">
-          <span style="font-size:20px;font-weight:700;color:#e8e3d9;">Tracktar</span>
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;background:#ffffff;border:1px solid #e7e5e4;border-radius:16px;">
+        <tr><td style="padding:28px 32px;border-bottom:1px solid #e7e5e4;">
+          <span style="font-size:20px;font-weight:700;color:#1c1917;">Tracktar</span>
         </td></tr>
         <tr><td style="padding:32px;">
-          <p style="margin:0 0 8px;font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#81b29a;">Monthly summary</p>
-          <h1 style="margin:0 0 12px;font-size:26px;font-weight:800;color:#e8e3d9;line-height:1.25;">${label}</h1>
-          <p style="margin:0 0 8px;font-size:15px;color:#8a91a8;line-height:1.6;">Hi ${hostName}, here is how your properties with bookings performed.</p>
+          <p style="margin:0 0 8px;font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#3d6b56;">Monthly summary</p>
+          <h1 style="margin:0 0 12px;font-size:26px;font-weight:800;color:#1c1917;line-height:1.25;">${label}</h1>
+          <p style="margin:0 0 8px;font-size:15px;color:#57534e;line-height:1.6;">Hi ${hostName}, here is how your properties with bookings performed.</p>
           <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-size:14px;">${rows}</table>
-          <a href="${escapeHtml(input.dashboardUrl)}" style="display:inline-block;margin-top:24px;padding:14px 28px;background:#81b29a;color:#0c0e14;font-size:15px;font-weight:700;text-decoration:none;border-radius:10px;">Open dashboard</a>
+          <a href="${escapeHtml(input.dashboardUrl)}" style="display:inline-block;margin-top:24px;padding:14px 28px;background:#3d6b56;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;border-radius:10px;">Open dashboard</a>
         </td></tr>
       </table>
     </td></tr>

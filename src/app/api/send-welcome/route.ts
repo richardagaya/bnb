@@ -63,11 +63,11 @@ function buildWelcomeEmail(firstName: string, appUrl: string): string {
   <style>
     @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: #f4f5f7; font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+    body { background: #ffffff; font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
     a { text-decoration: none; }
   </style>
 </head>
-<body style="background:#f4f5f7; padding: 32px 16px;">
+<body style="background:#ffffff; padding: 32px 16px;">
 
   <!-- Wrapper -->
   <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px; margin:0 auto;">
@@ -75,16 +75,16 @@ function buildWelcomeEmail(firstName: string, appUrl: string): string {
 
       <!-- Header -->
       <table width="100%" cellpadding="0" cellspacing="0"
-        style="background:#0f1219; border-radius:16px 16px 0 0; padding:32px 40px; border-bottom:1px solid #1e2130;">
+        style="background:#ffffff; border:1px solid #e7e5e4; border-bottom:0; border-radius:16px 16px 0 0; padding:32px 40px;">
         <tr>
           <td>
             <table cellpadding="0" cellspacing="0">
               <tr>
-                <td style="width:40px; height:40px; background:linear-gradient(135deg,#81b29a,#3d405b);
+                <td style="width:40px; height:40px; background:#3d6b56;
                   border-radius:10px; text-align:center; vertical-align:middle;">
                   <span style="font-size:18px; font-weight:800; color:#fff; line-height:40px;">T</span>
                 </td>
-                <td style="padding-left:12px; font-size:20px; font-weight:700; color:#e8e3d9; letter-spacing:-0.02em;">
+                <td style="padding-left:12px; font-size:20px; font-weight:700; color:#1c1917; letter-spacing:-0.02em;">
                   Tracktar
                 </td>
               </tr>
@@ -95,22 +95,22 @@ function buildWelcomeEmail(firstName: string, appUrl: string): string {
 
       <!-- Hero -->
       <table width="100%" cellpadding="0" cellspacing="0"
-        style="background:#0f1219; padding:40px 40px 32px;">
+        style="background:#ffffff; border-left:1px solid #e7e5e4; border-right:1px solid #e7e5e4; padding:40px 40px 32px;">
         <tr>
           <td>
             <p style="font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:0.1em;
-              color:#81b29a; margin-bottom:12px;">Welcome aboard</p>
-            <h1 style="font-size:30px; font-weight:800; color:#e8e3d9; line-height:1.2;
+              color:#3d6b56; margin-bottom:12px;">Welcome aboard</p>
+            <h1 style="font-size:30px; font-weight:800; color:#1c1917; line-height:1.2;
               letter-spacing:-0.025em; margin-bottom:16px;">
               Hey ${firstName}, your dashboard<br/>is ready 🎉
             </h1>
-            <p style="font-size:15px; color:#8a91a8; line-height:1.65; margin-bottom:28px;">
+            <p style="font-size:15px; color:#57534e; line-height:1.65; margin-bottom:28px;">
               You've just unlocked a smarter way to manage your rental properties.
               Here's a quick walkthrough to get the most out of Tracktar in the next 5 minutes.
             </p>
             <a href="${appUrl}/dashboard"
-              style="display:inline-block; padding:14px 28px; background:#81b29a;
-                color:#0c0e14; font-size:15px; font-weight:700; border-radius:10px;
+              style="display:inline-block; padding:14px 28px; background:#3d6b56;
+                color:#ffffff; font-size:15px; font-weight:700; border-radius:10px;
                 text-decoration:none;">
               Open my dashboard →
             </a>
@@ -120,18 +120,18 @@ function buildWelcomeEmail(firstName: string, appUrl: string): string {
 
       <!-- Divider -->
       <table width="100%" cellpadding="0" cellspacing="0"
-        style="background:#0f1219; padding:0 40px;">
-        <tr><td style="border-top:1px solid #1e2130; height:1px;"></td></tr>
+        style="background:#ffffff; border-left:1px solid #e7e5e4; border-right:1px solid #e7e5e4; padding:0 40px;">
+        <tr><td style="border-top:1px solid #e7e5e4; height:1px;"></td></tr>
       </table>
 
       <!-- Steps heading -->
       <table width="100%" cellpadding="0" cellspacing="0"
-        style="background:#0f1219; padding:32px 40px 8px;">
+        style="background:#ffffff; border-left:1px solid #e7e5e4; border-right:1px solid #e7e5e4; padding:32px 40px 8px;">
         <tr>
           <td>
             <p style="font-size:11px; font-weight:700; text-transform:uppercase;
-              letter-spacing:0.1em; color:#4a5068; margin-bottom:6px;">Getting started</p>
-            <h2 style="font-size:18px; font-weight:700; color:#e8e3d9; letter-spacing:-0.02em;">
+              letter-spacing:0.1em; color:#78716c; margin-bottom:6px;">Getting started</p>
+            <h2 style="font-size:18px; font-weight:700; color:#1c1917; letter-spacing:-0.02em;">
               5 steps to your first profit report
             </h2>
           </td>
@@ -155,20 +155,20 @@ function buildWelcomeEmail(firstName: string, appUrl: string): string {
 
       <!-- Bonus: Referrals -->
       <table width="100%" cellpadding="0" cellspacing="0"
-        style="background:#0f1219; padding:8px 40px 32px;">
+        style="background:#ffffff; border-left:1px solid #e7e5e4; border-right:1px solid #e7e5e4; padding:8px 40px 32px;">
         <tr>
-          <td style="background:#06141488; border:1px solid #06D6A033;
+          <td style="background:#f4faf6; border:1px solid #d5e8dc;
             border-radius:12px; padding:20px 24px;">
             <table cellpadding="0" cellspacing="0">
               <tr>
                 <td style="font-size:20px; padding-right:14px; vertical-align:top;">🤝</td>
                 <td>
-                  <p style="font-size:14px; font-weight:700; color:#e8e3d9; margin-bottom:6px;">
+                  <p style="font-size:14px; font-weight:700; color:#1c1917; margin-bottom:6px;">
                     Bonus: Track referral commissions
                   </p>
-                  <p style="font-size:13px; color:#5a6080; line-height:1.6;">
+                  <p style="font-size:13px; color:#57534e; line-height:1.6;">
                     When you're fully booked and send a guest to another unit, log the referral
-                    in the <strong style="color:#8a91a8;">Referrals tab</strong> and track the commission
+                    in the <strong style="color:#1c1917;">Referrals tab</strong> and track the commission
                     you earn. It's included automatically in your revenue.
                   </p>
                 </td>
@@ -180,21 +180,21 @@ function buildWelcomeEmail(firstName: string, appUrl: string): string {
 
       <!-- Divider -->
       <table width="100%" cellpadding="0" cellspacing="0"
-        style="background:#0f1219; padding:0 40px;">
-        <tr><td style="border-top:1px solid #1e2130; height:1px;"></td></tr>
+        style="background:#ffffff; border-left:1px solid #e7e5e4; border-right:1px solid #e7e5e4; padding:0 40px;">
+        <tr><td style="border-top:1px solid #e7e5e4; height:1px;"></td></tr>
       </table>
 
       <!-- CTA footer -->
       <table width="100%" cellpadding="0" cellspacing="0"
-        style="background:#0f1219; padding:32px 40px; border-radius:0 0 16px 16px;">
+        style="background:#ffffff; border:1px solid #e7e5e4; border-top:0; padding:32px 40px; border-radius:0 0 16px 16px;">
         <tr>
           <td style="text-align:center;">
-            <p style="font-size:14px; color:#5a6080; margin-bottom:20px;">
+            <p style="font-size:14px; color:#57534e; margin-bottom:20px;">
               Any questions? Just reply to this email — we read every one.
             </p>
             <a href="${appUrl}/dashboard"
-              style="display:inline-block; padding:13px 32px; background:#0c0e14;
-                border:1.5px solid #2a3050; color:#e8e3d9; font-size:14px;
+              style="display:inline-block; padding:13px 32px; background:#ffffff;
+                border:1.5px solid #e7e5e4; color:#1c1917; font-size:14px;
                 font-weight:600; border-radius:10px; text-decoration:none;">
               Go to dashboard
             </a>
@@ -206,9 +206,9 @@ function buildWelcomeEmail(firstName: string, appUrl: string): string {
       <table width="100%" cellpadding="0" cellspacing="0" style="padding:24px 0 0;">
         <tr>
           <td style="text-align:center;">
-            <p style="font-size:12px; color:#3a4060; line-height:1.6;">
+            <p style="font-size:12px; color:#a8a29e; line-height:1.6;">
               You received this because you created a Tracktar account.<br/>
-              <a href="${appUrl}" style="color:#4a5068; text-decoration:underline;">Tracktar</a>
+              <a href="${appUrl}" style="color:#78716c; text-decoration:underline;">Tracktar</a>
               · Property management made simple.
             </p>
           </td>
@@ -225,28 +225,28 @@ function buildWelcomeEmail(firstName: string, appUrl: string): string {
 function step(num: string, title: string, desc: string, link: string): string {
   return `
   <table width="100%" cellpadding="0" cellspacing="0"
-    style="background:#0f1219; padding:12px 40px;">
+    style="background:#ffffff; border-left:1px solid #e7e5e4; border-right:1px solid #e7e5e4; padding:12px 40px;">
     <tr>
       <td>
         <table width="100%" cellpadding="0" cellspacing="0"
-          style="border:1px solid #1e2130; border-radius:12px; padding:20px 22px;">
+          style="border:1px solid #e7e5e4; border-radius:12px; padding:20px 22px; background:#ffffff;">
           <tr>
             <td style="width:36px; vertical-align:top; padding-right:16px;">
-              <div style="width:36px; height:36px; background:#161924;
-                border:1px solid #2a3050; border-radius:8px; text-align:center;
-                line-height:36px; font-size:14px; font-weight:800; color:#81b29a;">
+              <div style="width:36px; height:36px; background:#eef6f1;
+                border:1px solid #d5e8dc; border-radius:8px; text-align:center;
+                line-height:36px; font-size:14px; font-weight:800; color:#3d6b56;">
                 ${num}
               </div>
             </td>
             <td>
-              <p style="font-size:15px; font-weight:700; color:#e8e3d9; margin-bottom:6px;">
+              <p style="font-size:15px; font-weight:700; color:#1c1917; margin-bottom:6px;">
                 ${title}
               </p>
-              <p style="font-size:13px; color:#5a6080; line-height:1.6; margin-bottom:10px;">
+              <p style="font-size:13px; color:#57534e; line-height:1.6; margin-bottom:10px;">
                 ${desc}
               </p>
               <a href="${link}" style="font-size:12px; font-weight:600;
-                color:#81b29a; text-decoration:none;">
+                color:#3d6b56; text-decoration:none;">
                 Do this now →
               </a>
             </td>
