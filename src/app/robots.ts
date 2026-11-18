@@ -9,6 +9,6 @@ export default function robots(): MetadataRoute.Robots {
         disallow: ['/dashboard', '/login', '/reset-password', '/auth/', '/api/'],
       },
     ],
-    sitemap: 'https://tracktar.com/sitemap.xml',
+    sitemap: 'https://www.tracktar.com/sitemap.xml',
   }
 }

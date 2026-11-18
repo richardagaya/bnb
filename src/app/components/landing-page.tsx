@@ -46,7 +46,7 @@ export default function LandingPage() {
                 Monthly summaries now land in your inbox on the 1st
               </p>
               <h1 className="lp-display">
-                Your rental is a <em>business.</em>
+                Your Airbnb is a <em>business.</em>
                 <br />
                 Run it like one.
               </h1>
@@ -56,7 +56,7 @@ export default function LandingPage() {
                 juggling Airbnb, Booking.com and direct guests.
               </p>
               <div className="lp-hero-actions">
-                <Link href="/login" className="lp-btn lp-btn--primary">
+                <Link href="/login?mode=signup" className="lp-btn lp-btn--primary">
                   Start tracking for free <Arrow />
                 </Link>
                 <a href="#demo" className="lp-btn lp-btn--quiet">
@@ -334,7 +334,7 @@ export default function LandingPage() {
             <div className="lp-cta-card" data-reveal>
               <h2 className="lp-cta-title">Know your numbers.<br /><em>Every month.</em></h2>
               <p>Stop guessing what your property made. Start with one listing today.</p>
-              <Link href="/login" className="lp-btn lp-btn--light">
+              <Link href="/login?mode=signup" className="lp-btn lp-btn--light">
                 Create your free account <Arrow />
               </Link>
             </div>

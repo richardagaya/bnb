@@ -219,6 +219,17 @@ li:hover > .hh-remove, .hh-remove:focus-visible { opacity: 1; }
 .hh-empty p + p { max-width: 380px; margin: 6px auto 0; }
 .hh-empty b { color: var(--ink); font-weight: 600; }
 
+/* ── Guide ── */
+.hh-guide { padding: 96px 0 120px; border-top: 1px solid var(--line); }
+.hh-guide-head { max-width: 640px; margin-bottom: 48px; }
+.hh-guide-head h2 { font-size: clamp(28px, 3.4vw, 40px); font-weight: 600; letter-spacing: -0.04em; line-height: 1.1; margin-bottom: 14px; }
+.hh-guide-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 48px 64px; }
+.hh-guide-item h3 { font-size: 18px; font-weight: 600; letter-spacing: -0.02em; margin-bottom: 12px; }
+.hh-guide-item p { font-size: 15px; line-height: 1.7; color: var(--muted); }
+.hh-guide-item p + p { margin-top: 12px; }
+.hh-guide-foot { margin-top: 56px; padding-top: 24px; border-top: 1px solid var(--line); font-size: 15px; color: var(--muted); }
+.hh-guide-foot a { color: var(--accent); font-weight: 500; text-decoration: underline; text-underline-offset: 3px; }
+
 /* Pinned summary shown on narrow screens while the results card is off-screen */
 .hh-peek { display: none; }
 
@@ -249,6 +260,8 @@ li:hover > .hh-remove, .hh-remove:focus-visible { opacity: 1; }
   .hh-tabs { grid-template-columns: minmax(0, 1fr); }
   .hh-tab { padding: 12px 14px; align-items: center; }
   .hh-check-grid { grid-template-columns: minmax(0, 1fr); }
+  .hh-guide { padding: 72px 0 96px; }
+  .hh-guide-grid { grid-template-columns: minmax(0, 1fr); gap: 36px; }
 }
 
 @media (max-width: 560px) {

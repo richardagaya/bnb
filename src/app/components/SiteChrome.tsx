@@ -3,16 +3,11 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Inter } from "next/font/google";
 import { saveMarketingEmail } from "@/lib/firestore";
 import { NavAccount } from "@/app/components/NavAccount";
 import "./landing-page.css";
 
-export const siteFont = Inter({
-  subsets: ["latin"],
-  variable: "--lp-inter",
-  display: "swap",
-});
+export { siteFont } from "./siteFont";
 
 const NAV_LINKS = [
   { href: "/#features", label: "Features" },
@@ -20,7 +15,7 @@ const NAV_LINKS = [
   { href: "/#faq", label: "FAQ" },
   { href: "/tools", label: "Host hub" },
   { href: "/blog", label: "Blog" },
-  { href: "/verify", label: "Verify" },
+  { href: "/about", label: "About" },
 ];
 
 function NavItem({ href, label, current, onClick }: { href: string; label: string; current?: boolean; onClick?: () => void }) {
@@ -157,10 +152,10 @@ export function SiteFooter() {
               <h4>Resources</h4>
               <Link href="/tools">Host hub</Link>
               <Link href="/blog">Blog</Link>
-              <Link href="/verify">Verify a number</Link>
             </div>
             <div>
               <h4>Company</h4>
+              <Link href="/about">About</Link>
               <Link href="/contact">Contact</Link>
               <Link href="/privacy-policy">Privacy</Link>
               <Link href="/terms-of-service">Terms</Link>

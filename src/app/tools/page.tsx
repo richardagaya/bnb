@@ -303,7 +303,7 @@ function ROICalculator() {
 
         <div className="hh-card hh-upsell">
           <p><strong>Already hosting?</strong> Tracktar tracks the real version of these numbers from your bookings and expenses, month by month.</p>
-          <Link href="/login" className="lp-btn lp-btn--primary">Start free <Arrow /></Link>
+          <Link href="/login?mode=signup" className="lp-btn lp-btn--primary">Start free <Arrow /></Link>
         </div>
       </aside>
     </div>
@@ -533,6 +533,65 @@ const TOOLS: { id: Tool; label: string; description: string; icon: React.ReactNo
 
 const isTool = (v: string): v is Tool => TOOLS.some((t) => t.id === v);
 
+const GUIDE = [
+  {
+    title: "How the ROI calculator works",
+    body: [
+      "Monthly revenue is your average price per stay multiplied by the number of stays you expect in a month. Platform fees and management fees are taken as a percentage of that revenue. Rent, cleaning, utilities and supplies are fixed amounts that you pay whether the place is booked or not.",
+      "Net profit is revenue minus every one of those costs. ROI is a year of net profit divided by the money you spent setting the property up: furniture, appliances, deposits and décor. Payback is how many years it takes for profit to cover that setup cost.",
+    ],
+  },
+  {
+    title: "Reading the break-even number",
+    body: [
+      "Break-even stays tells you how many bookings a month cover your fixed costs after fees. Below that number you are paying to host. Above it, every extra stay is profit.",
+      "If break-even sits close to the number of stays you actually get, the property has very little room for a slow month. Raising your rate slightly, or negotiating rent, often moves it more than chasing extra bookings.",
+    ],
+  },
+  {
+    title: "Why fixed costs decide everything",
+    body: [
+      "Most hosts watch their nightly rate and forget that rent and utilities arrive every month regardless of occupancy. A unit that looks busy can still lose money if those fixed costs are high. Run the calculator with a pessimistic number of stays as well as your hoped-for number, and plan around the lower result.",
+    ],
+  },
+  {
+    title: "Using the checklist and notes",
+    body: [
+      "The checklist is grouped into four stages: getting a listing ready, guest check-in, the turnover between stays, and the monthly review. Between-stay jobs like changing linen, restocking and checking appliances are the easiest to skip when bookings are back to back. Add your own items, and use \"Uncheck all\" to start the list fresh.",
+      "Notes are for the small things you would otherwise forget, like a loose tap or a guest who asked for early check-in. Both tools save in your browser only. Nothing is sent to our servers, and clearing your browser data removes them.",
+    ],
+  },
+];
+
+function HubGuide() {
+  return (
+    <section className="hh-guide" aria-labelledby="hh-guide-title">
+      <div className="lp-wrap">
+        <div className="hh-guide-head">
+          <p className="lp-kicker">Guide</p>
+          <h2 id="hh-guide-title">What the numbers mean</h2>
+          <p className="lp-lead">
+            The tools are only useful if you trust the maths. Here is exactly how each result is worked out
+            and how to use it when you decide on a property.
+          </p>
+        </div>
+        <div className="hh-guide-grid">
+          {GUIDE.map((g) => (
+            <article key={g.title} className="hh-guide-item">
+              <h3>{g.title}</h3>
+              {g.body.map((p) => <p key={p.slice(0, 24)}>{p}</p>)}
+            </article>
+          ))}
+        </div>
+        <p className="hh-guide-foot">
+          Want this tracked automatically from your real bookings? <Link href="/login?mode=signup">Create a free account</Link>, or
+          read more on <Link href="/blog">the blog</Link>.
+        </p>
+      </div>
+    </section>
+  );
+}
+
 export default function ToolsPage() {
   const [active, setActive] = useState<Tool>("roi");
 
@@ -612,6 +671,8 @@ export default function ToolsPage() {
             </div>
           </div>
         </section>
+
+        <HubGuide />
       </main>
 
       <SiteFooter />

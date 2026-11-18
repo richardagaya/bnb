@@ -167,7 +167,7 @@ export default async function PostPage({ params }: PageProps) {
                 calendar sync — all in one place. Free to start.
               </p>
             </div>
-            <Link href="/login" className="post-cta-btn">Get started free →</Link>
+            <Link href="/login?mode=signup" className="post-cta-btn">Get started free →</Link>
           </div>
         </div>
 

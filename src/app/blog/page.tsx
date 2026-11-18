@@ -69,7 +69,7 @@ export default async function BlogIndex() {
           <nav className="blog-nav">
             <Link href="/">Home</Link>
             <Link href="/tools">Tools</Link>
-            <Link href="/verify">Verify</Link>
+            <Link href="/about">About</Link>
             <NavAccount />
           </nav>
         </div>

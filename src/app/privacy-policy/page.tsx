@@ -28,7 +28,7 @@ export default function PrivacyPolicyPage() {
             <Link href="/">Home</Link>
             <Link href="/blog">Blog</Link>
             <Link href="/tools">Tools</Link>
-            <Link href="/verify">Verify</Link>
+            <Link href="/about">About</Link>
             <NavAccount />
           </nav>
         </div>
